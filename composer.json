@@ -11,4 +11,5 @@
         "psr-4": {
             "Rindow\\Qubit\\": "src/"
         }
-    }}
+    }
+}
