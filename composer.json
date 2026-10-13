@@ -1,0 +1,14 @@
+{
+    "name": "rindow/rindow-qubit",
+    "description": "PHP port of Qiskit core (QuantumCircuit + StatevectorSampler + visualization) under Rindow\\Qubit namespace",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.1",
+        "rindow/rindow-math-matrix-matlibffi": "^1.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Rindow\\Qubit\\": "src/"
+        }
+    }}
