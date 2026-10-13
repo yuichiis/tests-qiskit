@@ -2,7 +2,7 @@
 ```bash
 phpvenv .phpvenv
 . .\Scripts\Activate.ps1
-composer global require rindow/rindow-math-matrix-matlibffi
+composer require rindow/rindow-math-matrix-matlibffi
 
 php samples\test_qubit.php
 ```
