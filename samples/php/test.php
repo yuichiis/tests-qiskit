@@ -1,6 +1,5 @@
 <?php
-require __DIR__ . '/../vendor/autoload.php';
-//require_once 'vendor/rindow/rindow-math-matrix/src/C.php';
+require __DIR__ . '/../../vendor/autoload.php';
 use Rindow\Math\Matrix\MatrixOperator;
 use Interop\Polite\Math\Matrix\NDArray;
 use function Rindow\Math\Matrix\C;

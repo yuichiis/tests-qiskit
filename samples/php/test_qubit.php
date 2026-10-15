@@ -1,6 +1,6 @@
 <?php
 // test.py のPHP版 (Rindow\Qubit 使用)
-require __DIR__ . '/../vendor/autoload.php';
+require __DIR__ . '/../../vendor/autoload.php';
 
 use Rindow\Qubit\QuantumCircuit;
 use Rindow\Qubit\Primitives\StatevectorSampler;
