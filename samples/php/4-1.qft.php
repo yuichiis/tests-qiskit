@@ -8,9 +8,9 @@ require __DIR__ . '/../../vendor/autoload.php';
 use Rindow\Qubit\QuantumCircuit;
 
 $qc = new QuantumCircuit(2);
-$qc->h(0);
-$qc->cp(M_PI / 2, 0, 1);
 $qc->h(1);
+$qc->cp(M_PI / 2, 0, 1);
+$qc->h(0);
 $qc->swap(0, 1);
 echo $qc->draw();
 

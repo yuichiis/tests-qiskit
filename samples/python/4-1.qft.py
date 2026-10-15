@@ -7,9 +7,9 @@ from qiskit_aer import AerSimulator
 from qiskit_aer.library import SaveStatevector
 
 qc = QuantumCircuit(2)
-qc.h(0)
-qc.cp(3.14159 / 2, 0, 1)
 qc.h(1)
+qc.cp(3.14159 / 2, 0, 1)
+qc.h(0)
 qc.swap(0, 1)
 qc.append(SaveStatevector(2), [0, 1])
 print(qc.draw())
