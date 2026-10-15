@@ -335,6 +335,18 @@ class QuantumCircuit
         return $this;
     }
 
+    /** Controlled-phase gate CP(θ) = diag(1,1,1,e^{iθ}) */
+    public function cp(float $theta, int|array|\Traversable $control, int|array|\Traversable $target): static
+    {
+        foreach (self::expandTwoQubitArgs($control, $target) as [$c, $t]) {
+            if ($c === $t) {
+                throw new InvalidArgumentException('Control and target must differ.');
+            }
+            $this->append('cp', [$c, $t], [$theta]);
+        }
+        return $this;
+    }
+
     public function swap(int|array|\Traversable $qubit1, int|array|\Traversable $qubit2): static
     {
         foreach (self::expandTwoQubitArgs($qubit1, $qubit2) as [$a, $b]) {
@@ -613,6 +625,14 @@ class QuantumCircuit
                 [$a, $b] = $qs;
                 $span = range(min($a, $b), max($a, $b));
                 for ($q = min($a, $b) + 1; $q < max($a, $b); $q++) {
+                    $contrib[$q] = '│';
+                }
+            } elseif ($op['name'] === 'cp') {
+                [$c, $t] = $qs;
+                $contrib[$c] = '●';
+                $contrib[$t] = sprintf('cp(%.3g)', $op['params'][0]);
+                $span = range(min($c, $t), max($c, $t));
+                for ($q = min($c, $t) + 1; $q < max($c, $t); $q++) {
                     $contrib[$q] = '│';
                 }
             } elseif ($op['name'] === 'swap') {

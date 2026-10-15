@@ -159,6 +159,9 @@ class StatevectorSimulator
             case 'cz':
                 $this->applyCz($qubits[0], $qubits[1]);
                 break;
+            case 'cp':
+                $this->applyCp((float)$params[0], $qubits[0], $qubits[1]);
+                break;
             case 'swap':
                 $this->applySwap($qubits[0], $qubits[1]);
                 break;
@@ -306,6 +309,20 @@ class StatevectorSimulator
     {
         $this->applyTwoQubit(max($q1, $q2), min($q1, $q2),
             [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]]);
+    }
+
+    /**
+     * 制御位相ゲート CP(θ) = diag(1,1,1,e^{iθ}).
+     * 両方が1のときのみ位相が付くため control/target の順序に依らない.
+     */
+    public function applyCp(float $theta, int $q1, int $q2): void
+    {
+        if ($q1 === $q2) {
+            throw new InvalidArgumentException('Control and target must differ.');
+        }
+        $this->applyTwoQubit(max($q1, $q2), min($q1, $q2),
+            [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0],
+             [0, 0, 0, C(cos($theta), sin($theta))]]);
     }
 
     public function applySwap(int $q1, int $q2): void
