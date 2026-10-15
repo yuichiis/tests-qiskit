@@ -17,12 +17,3 @@ print(qc.draw())
 sim = AerSimulator(method="statevector")
 state = sim.run(transpile(qc, sim)).result().get_statevector()
 print(state)
-counts = sim.run(transpile(qc, sim), shots=1000).result().get_counts()
-for key, value in  counts.items():
-    print(key, value)
-
-import matplotlib.pyplot as plt
-from qiskit.visualization import plot_histogram
-
-plot_histogram(counts)
-plt.show()
