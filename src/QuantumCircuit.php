@@ -567,13 +567,13 @@ class QuantumCircuit
         return $this->numQubits;
     }
 
-    /** qiskitの draw() 的な簡易テキスト描画 */
+    /** qiskitの draw() 的な簡易テキスト描画. 独立な操作は同一列に詰めて全ビットで幅を揃える */
     public function draw(): string
     {
-        $lines = [];
-        for ($q = 0; $q < $this->numQubits; $q++) {
-            $lines[$q] = "q{$q}: ─";
-        }
+        // 操作を列(レイヤー)にパッキング: 直前の列とqubitが重ならなければ同列に配置する.
+        // これにより h([0,1]) や measure([0,1],[0,1]) が縦に揃って描画される.
+        /** @var array<int,array{cells:array<int,string>,used:array<int,bool>,usedClbits:array<int,bool>,barrier:bool}> $columns */
+        $columns = [];
         foreach ($this->operations as $op) {
             $label = $op['name'];
             if (in_array($op['name'], ['rx', 'ry', 'rz', 'p'], true)) {
@@ -582,37 +582,144 @@ class QuantumCircuit
                 $label .= sprintf('(%.3g,%.3g,%.3g)', $op['params'][0], $op['params'][1], $op['params'][2]);
             }
             $qs = $op['qubits'];
+            // この操作が使うセルと占有範囲を求める
+            $contrib = []; // qubit => symbol
+            $span = [];    // 占有するqubit範囲(2qubit間の│含む)
+            $clbits = [];
             if ($op['name'] === 'measure') {
-                $lines[$qs[0]] .= "M(c{$op['clbits'][0]})─";
-                continue;
-            }
-            if ($op['name'] === 'barrier') {
+                $contrib[$qs[0]] = "M(c{$op['clbits'][0]})";
+                $span = [$qs[0]];
+                $clbits = [$op['clbits'][0]];
+            } elseif ($op['name'] === 'barrier') {
                 foreach ($qs as $q) {
-                    $lines[$q] .= "‖─";
+                    $contrib[$q] = '‖';
                 }
-                continue;
-            }
-            if (count($qs) === 1) {
-                $lines[$qs[0]] .= "{$label}─";
+                $span = array_values($qs);
+            } elseif (count($qs) === 1) {
+                $contrib[$qs[0]] = $label;
+                $span = [$qs[0]];
             } elseif ($op['name'] === 'cx' || $op['name'] === 'cnot') {
                 [$c, $t] = $qs;
-                $lines[$c] .= "●─";
-                $lines[$t] .= "⊕─";
+                $contrib[$c] = '●';
+                $contrib[$t] = '⊕';
+                $span = range(min($c, $t), max($c, $t));
+                for ($q = min($c, $t) + 1; $q < max($c, $t); $q++) {
+                    $contrib[$q] = '│';
+                }
             } elseif ($op['name'] === 'cz') {
                 foreach ($qs as $q) {
-                    $lines[$q] .= "●─";
+                    $contrib[$q] = '●';
+                }
+                [$a, $b] = $qs;
+                $span = range(min($a, $b), max($a, $b));
+                for ($q = min($a, $b) + 1; $q < max($a, $b); $q++) {
+                    $contrib[$q] = '│';
                 }
             } elseif ($op['name'] === 'swap') {
                 foreach ($qs as $q) {
-                    $lines[$q] .= "×─";
+                    $contrib[$q] = '×';
+                }
+                [$a, $b] = $qs;
+                $span = range(min($a, $b), max($a, $b));
+                for ($q = min($a, $b) + 1; $q < max($a, $b); $q++) {
+                    $contrib[$q] = '│';
                 }
             } else {
                 foreach ($qs as $q) {
-                    $lines[$q] .= "{$label}─";
+                    $contrib[$q] = $label;
+                }
+                $span = array_values($qs);
+            }
+
+            $isBarrier = ($op['name'] === 'barrier');
+            $merged = false;
+            if (!$isBarrier && !empty($columns)) {
+                $lastIdx = count($columns) - 1;
+                if (!$columns[$lastIdx]['barrier']) {
+                    $conflict = false;
+                    foreach ($span as $q) {
+                        if ($columns[$lastIdx]['used'][$q]) {
+                            $conflict = true;
+                            break;
+                        }
+                    }
+                    if (!$conflict) {
+                        foreach ($clbits as $c) {
+                            if ($columns[$lastIdx]['usedClbits'][$c] ?? false) {
+                                $conflict = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!$conflict) {
+                        foreach ($contrib as $q => $sym) {
+                            $columns[$lastIdx]['cells'][$q] = $sym;
+                        }
+                        foreach ($span as $q) {
+                            $columns[$lastIdx]['used'][$q] = true;
+                        }
+                        foreach ($clbits as $c) {
+                            $columns[$lastIdx]['usedClbits'][$c] = true;
+                        }
+                        $merged = true;
+                    }
+                }
+            }
+            if (!$merged) {
+                $cells = array_fill(0, $this->numQubits, '');
+                foreach ($contrib as $q => $sym) {
+                    $cells[$q] = $sym;
+                }
+                $used = array_fill(0, $this->numQubits, false);
+                foreach ($span as $q) {
+                    $used[$q] = true;
+                }
+                $usedClbits = [];
+                foreach ($clbits as $c) {
+                    $usedClbits[$c] = true;
+                }
+                $columns[] = ['cells' => $cells, 'used' => $used, 'usedClbits' => $usedClbits, 'barrier' => $isBarrier];
+            }
+        }
+
+        $lines = [];
+        for ($q = 0; $q < $this->numQubits; $q++) {
+            $lines[$q] = "q{$q}: ─";
+        }
+        foreach ($columns as $col) {
+            $cells = $col['cells'];
+            // 列幅はこの列の最大表示幅. アイドルはその幅ぶんの '─' で埋める
+            $width = 1;
+            foreach ($cells as $cell) {
+                if ($cell !== '') {
+                    $width = max($width, self::displayWidth($cell));
+                }
+            }
+            for ($q = 0; $q < $this->numQubits; $q++) {
+                $cell = $cells[$q];
+                if ($cell === '') {
+                    $lines[$q] .= str_repeat('─', $width) . '─';
+                } else {
+                    $lines[$q] .= $cell . str_repeat('─', $width - self::displayWidth($cell)) . '─';
                 }
             }
         }
         return implode("\n", $lines) . "\n";
+    }
+
+    private static function displayWidth(string $s): int
+    {
+        if (function_exists('mb_strwidth')) {
+            return max(1, mb_strwidth($s, 'UTF-8'));
+        }
+        if (function_exists('mb_strlen')) {
+            return max(1, mb_strlen($s, 'UTF-8'));
+        }
+        $chars = preg_split('//u', $s, -1, PREG_SPLIT_NO_EMPTY);
+        if ($chars !== false) {
+            return max(1, count($chars));
+        }
+        return max(1, strlen($s));
     }
 
     public function __toString(): string
