@@ -359,30 +359,50 @@ class QuantumCircuit
     }
 
     /**
-     * 任意の1qubitユニタリ行列 [[a,b],[c,d]] を適用する.
+     * 任意のqubitユニタリ行列を適用する.
      * 各要素は float(実数) または [re, im] / ['re'=>..,'im'=>..] / Complex オブジェクト.
+     * 2x2 の場合は各qubitに適用する. Nqubit (4x4以上) の場合は
+     * qiskit互換で qubits[0] を最小位 (LSB) として1回適用する.
      */
     public function unitary(array $matrix, int|array|\Traversable $qubit): static
     {
         $flat = self::matrixToComplexPairs($matrix);
-        if (count($flat) !== 4) {
-            throw new InvalidArgumentException('unitary() requires a 2x2 matrix.');
+        $dim = (int)sqrt(count($flat) / 2);
+        if ($dim === 2) {
+            foreach (self::normalizeQubitList($qubit) as $q) {
+                $this->append('unitary', [(int)$q], $flat);
+            }
+            return $this;
         }
-        foreach (self::normalizeQubitList($qubit) as $q) {
-            $this->append('unitary', [(int)$q], $flat);
+        $qlist = array_map('intval', self::normalizeQubitList($qubit));
+        $k = 0;
+        for ($d = $dim; $d > 1; $d >>= 1) {
+            $k++;
         }
+        if (count($qlist) !== $k) {
+            throw new InvalidArgumentException(
+                'unitary() requires ' . $k . ' qubits for a ' . $dim . 'x' . $dim . ' matrix.'
+            );
+        }
+        $this->append('unitary', array_values($qlist), $flat);
         return $this;
     }
 
     /**
-     * @param array $matrix 2x2
-     * @return array<float> [re00,im00, re01,im01, re10,im10, re11,im11]
+     * @param array $matrix NxN (Nは2の冪)
+     * @return array<float> 行優先の [re,im,...]
      */
     private static function matrixToComplexPairs(array $matrix): array
     {
         $rows = array_values($matrix);
-        if (count($rows) !== 2 || count((array)$rows[0]) !== 2 || count((array)$rows[1]) !== 2) {
-            throw new InvalidArgumentException('unitary() requires a 2x2 matrix.');
+        $dim = count($rows);
+        if ($dim < 2 || ($dim & ($dim - 1)) !== 0) {
+            throw new InvalidArgumentException('unitary() requires an NxN matrix (N=2^k).');
+        }
+        foreach ($rows as $row) {
+            if (count((array)$row) !== $dim) {
+                throw new InvalidArgumentException('unitary() requires an NxN matrix (N=2^k).');
+            }
         }
         $out = [];
         foreach ($rows as $row) {
@@ -642,6 +662,14 @@ class QuantumCircuit
                 [$a, $b] = $qs;
                 $span = range(min($a, $b), max($a, $b));
                 for ($q = min($a, $b) + 1; $q < max($a, $b); $q++) {
+                    $contrib[$q] = '│';
+                }
+            } elseif ($op['name'] === 'unitary' && count($qs) > 1) {
+                foreach ($qs as $q) {
+                    $contrib[$q] = 'U';
+                }
+                $span = range(min($qs), max($qs));
+                for ($q = min($qs) + 1; $q < max($qs); $q++) {
                     $contrib[$q] = '│';
                 }
             } else {

@@ -147,10 +147,27 @@ class StatevectorSimulator
                 $this->applyU((float)$params[0], (float)$params[1], (float)$params[2], $qubits[0]);
                 break;
             case 'unitary':
-                $this->applySingle($qubits[0], [
-                    [C((float)$params[0], (float)$params[1]), C((float)$params[2], (float)$params[3])],
-                    [C((float)$params[4], (float)$params[5]), C((float)$params[6], (float)$params[7])],
-                ]);
+                if (count($params) === 8) {
+                    $this->applySingle($qubits[0], [
+                        [C((float)$params[0], (float)$params[1]), C((float)$params[2], (float)$params[3])],
+                        [C((float)$params[4], (float)$params[5]), C((float)$params[6], (float)$params[7])],
+                    ]);
+                    break;
+                }
+                // Nqubitユニタリ: paramsを行優先で復元し、qiskit順(LSB first)を
+                // MSB firstに直して applyNQubit に渡す
+                $dim = (int)sqrt(count($params) / 2);
+                $mat = [];
+                $idx = 0;
+                for ($i = 0; $i < $dim; $i++) {
+                    $row = [];
+                    for ($j = 0; $j < $dim; $j++) {
+                        $row[] = C((float)$params[$idx], (float)$params[$idx + 1]);
+                        $idx += 2;
+                    }
+                    $mat[] = $row;
+                }
+                $this->applyNQubit(array_reverse($qubits), $mat);
                 break;
             case 'cx':
             case 'cnot':
@@ -329,6 +346,73 @@ class StatevectorSimulator
     {
         $this->applyTwoQubit(max($q1, $q2), min($q1, $q2),
             [[1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]]);
+    }
+
+    /**
+     * 任意のk qubitゲート (2^k x 2^k 複素行列) を適用する.
+     * 基底順は $qubitsMsbFirst の先頭が最上位ビット (例: [qb,qa] で idx=qb*2+qa)。
+     * 状態を行ベクトルと見て Y = X @ U^T で単一gemm実行する。
+     * @param array<int> $qubitsMsbFirst 先頭がMSB (重複なし)
+     * @param array<array<float|object>> $matrix 2^k x 2^k (row-major。各要素は実数またはComplex)
+     */
+    public function applyNQubit(array $qubitsMsbFirst, array $matrix): void
+    {
+        $k = count($qubitsMsbFirst);
+        if ($k < 1) {
+            throw new InvalidArgumentException('applyNQubit() requires at least 1 qubit.');
+        }
+        $dim = 1 << $k;
+        if (count($matrix) !== $dim) {
+            throw new InvalidArgumentException('applyNQubit() matrix size mismatch.');
+        }
+        foreach ($matrix as $row) {
+            if (count((array)$row) !== $dim) {
+                throw new InvalidArgumentException('applyNQubit() matrix size mismatch.');
+            }
+        }
+        $seen = [];
+        foreach ($qubitsMsbFirst as $q) {
+            if ($q < 0 || $q >= $this->numQubits || isset($seen[$q])) {
+                throw new InvalidArgumentException("Qubit index out of range or duplicated: {$q}");
+            }
+            $seen[$q] = true;
+        }
+        $la = $this->la;
+        $mo = $this->mo;
+        $n = $this->numQubits;
+        // 状態を [2]*n テンソルと見る. axis a (左から0始まり) <-> qubit n-1-a.
+        $toAxis = static fn(int $q): int => $n - 1 - $q;
+        $targetAxes = array_map($toAxis, array_values($qubitsMsbFirst));
+        $isTarget = array_fill(0, $n, false);
+        foreach ($targetAxes as $a) {
+            $isTarget[$a] = true;
+        }
+        $otherAxes = [];
+        for ($a = 0; $a < $n; $a++) {
+            if (!$isTarget[$a]) {
+                $otherAxes[] = $a;
+            }
+        }
+        // 対象axisを末尾に集める (MSB firstの順序を保つ)
+        $perm = array_merge($otherAxes, $targetAxes);
+        $shape = array_fill(0, $n, 2);
+        $rest = 1 << ($n - $k);
+        $flat = $la->transpose($this->state->reshape($shape), perm: $perm)
+            ->reshape([$rest, $dim]);
+        $U = $mo->array($matrix, dtype: NDArray::complex128);
+        // Y = X @ U^T (transB=共役なし転置。conj省略時は共役転置になるので明示)
+        $out = $la->gemm($flat, $U, transB: true, conjB: false);
+        // 逆置換で元に戻す
+        $backShape = array_merge(
+            array_fill(0, $n - $k, 2),
+            array_fill(0, $k, 2)
+        );
+        $inv = array_fill(0, $n, 0);
+        foreach ($perm as $new => $old) {
+            $inv[$old] = $new;
+        }
+        $this->state = $la->transpose($out->reshape($backShape), perm: $inv)
+            ->reshape([$this->dim]);
     }
 
     /** @return array<int,array{re:float,im:float}> */
