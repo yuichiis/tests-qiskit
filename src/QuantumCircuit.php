@@ -108,121 +108,258 @@ class QuantumCircuit
     }
 
     // ---- 単一量子ビットゲート ----
+    // Qiskit互換: qubit引数は int または intの配列/Traversableを受け付け、
+    // 配列の場合は各qubitに順にゲートを適用する.
 
-    public function h(int $qubit): static
+    /**
+     * @param int|array<int>|\Traversable $qubit
+     * @return array<int> 正規化されたqubitリスト
+     */
+    private static function normalizeQubitList(int|array|\Traversable $qubit): array
     {
-        return $this->append('h', [$qubit]);
+        if ($qubit instanceof \Traversable) {
+            $qubit = iterator_to_array($qubit, false);
+        }
+        if (is_array($qubit)) {
+            $list = array_values($qubit);
+            if (count($list) === 0) {
+                throw new InvalidArgumentException('Qubit list must not be empty.');
+            }
+            return $list;
+        }
+        return [$qubit];
     }
 
-    public function x(int $qubit): static
+    /**
+     * @param int|array<int>|\Traversable $clbit
+     * @return array<int>
+     */
+    private static function normalizeClbitList(int|array|\Traversable $clbit): array
     {
-        return $this->append('x', [$qubit]);
+        if ($clbit instanceof \Traversable) {
+            $clbit = iterator_to_array($clbit, false);
+        }
+        if (is_array($clbit)) {
+            $list = array_values($clbit);
+            if (count($list) === 0) {
+                throw new InvalidArgumentException('Clbit list must not be empty.');
+            }
+            return $list;
+        }
+        return [$clbit];
     }
 
-    public function y(int $qubit): static
+    /**
+     * 2qubitゲート用の引数展開. Qiskit互換のブロードキャスト:
+     * - 両方単一 => 1ペア
+     * - 片方が単一、もう一方がリスト => 単一を各要素にブロードキャスト
+     * - 両方リストで同数 => 1対1対応
+     * - それ以外 => エラー
+     * @return array<array{int,int}>
+     */
+    private static function expandTwoQubitArgs(int|array|\Traversable $q1, int|array|\Traversable $q2): array
     {
-        return $this->append('y', [$qubit]);
+        $list1 = self::normalizeQubitList($q1);
+        $list2 = self::normalizeQubitList($q2);
+        $n1 = count($list1);
+        $n2 = count($list2);
+        if ($n1 === 1 && $n2 === 1) {
+            return [[(int)$list1[0], (int)$list2[0]]];
+        }
+        if ($n1 === 1) {
+            $pairs = [];
+            foreach ($list2 as $b) {
+                $pairs[] = [(int)$list1[0], (int)$b];
+            }
+            return $pairs;
+        }
+        if ($n2 === 1) {
+            $pairs = [];
+            foreach ($list1 as $a) {
+                $pairs[] = [(int)$a, (int)$list2[0]];
+            }
+            return $pairs;
+        }
+        if ($n1 !== $n2) {
+            throw new InvalidArgumentException(
+                "Qubit list size mismatch: {$n1} vs {$n2}."
+            );
+        }
+        $pairs = [];
+        foreach ($list1 as $i => $a) {
+            $pairs[] = [(int)$a, (int)$list2[$i]];
+        }
+        return $pairs;
     }
 
-    public function z(int $qubit): static
+    public function h(int|array|\Traversable $qubit): static
     {
-        return $this->append('z', [$qubit]);
+        foreach (self::normalizeQubitList($qubit) as $q) {
+            $this->append('h', [(int)$q]);
+        }
+        return $this;
     }
 
-    public function s(int $qubit): static
+    public function x(int|array|\Traversable $qubit): static
     {
-        return $this->append('s', [$qubit]);
+        foreach (self::normalizeQubitList($qubit) as $q) {
+            $this->append('x', [(int)$q]);
+        }
+        return $this;
     }
 
-    public function sdg(int $qubit): static
+    public function y(int|array|\Traversable $qubit): static
     {
-        return $this->append('sdg', [$qubit]);
+        foreach (self::normalizeQubitList($qubit) as $q) {
+            $this->append('y', [(int)$q]);
+        }
+        return $this;
     }
 
-    public function t(int $qubit): static
+    public function z(int|array|\Traversable $qubit): static
     {
-        return $this->append('t', [$qubit]);
+        foreach (self::normalizeQubitList($qubit) as $q) {
+            $this->append('z', [(int)$q]);
+        }
+        return $this;
     }
 
-    public function tdg(int $qubit): static
+    public function s(int|array|\Traversable $qubit): static
     {
-        return $this->append('tdg', [$qubit]);
+        foreach (self::normalizeQubitList($qubit) as $q) {
+            $this->append('s', [(int)$q]);
+        }
+        return $this;
     }
 
-    public function id(int $qubit): static
+    public function sdg(int|array|\Traversable $qubit): static
     {
-        return $this->append('id', [$qubit]);
+        foreach (self::normalizeQubitList($qubit) as $q) {
+            $this->append('sdg', [(int)$q]);
+        }
+        return $this;
     }
 
-    public function rx(float $theta, int $qubit): static
+    public function t(int|array|\Traversable $qubit): static
     {
-        return $this->append('rx', [$qubit], [$theta]);
+        foreach (self::normalizeQubitList($qubit) as $q) {
+            $this->append('t', [(int)$q]);
+        }
+        return $this;
     }
 
-    public function ry(float $theta, int $qubit): static
+    public function tdg(int|array|\Traversable $qubit): static
     {
-        return $this->append('ry', [$qubit], [$theta]);
+        foreach (self::normalizeQubitList($qubit) as $q) {
+            $this->append('tdg', [(int)$q]);
+        }
+        return $this;
     }
 
-    public function rz(float $theta, int $qubit): static
+    public function id(int|array|\Traversable $qubit): static
     {
-        return $this->append('rz', [$qubit], [$theta]);
+        foreach (self::normalizeQubitList($qubit) as $q) {
+            $this->append('id', [(int)$q]);
+        }
+        return $this;
+    }
+
+    public function rx(float $theta, int|array|\Traversable $qubit): static
+    {
+        foreach (self::normalizeQubitList($qubit) as $q) {
+            $this->append('rx', [(int)$q], [$theta]);
+        }
+        return $this;
+    }
+
+    public function ry(float $theta, int|array|\Traversable $qubit): static
+    {
+        foreach (self::normalizeQubitList($qubit) as $q) {
+            $this->append('ry', [(int)$q], [$theta]);
+        }
+        return $this;
+    }
+
+    public function rz(float $theta, int|array|\Traversable $qubit): static
+    {
+        foreach (self::normalizeQubitList($qubit) as $q) {
+            $this->append('rz', [(int)$q], [$theta]);
+        }
+        return $this;
     }
 
     /** Phase gate P(λ) == U1(λ) */
-    public function p(float $lambda, int $qubit): static
+    public function p(float $lambda, int|array|\Traversable $qubit): static
     {
-        return $this->append('p', [$qubit], [$lambda]);
+        foreach (self::normalizeQubitList($qubit) as $q) {
+            $this->append('p', [(int)$q], [$lambda]);
+        }
+        return $this;
     }
 
-    public function u(float $theta, float $phi, float $lambda, int $qubit): static
+    public function u(float $theta, float $phi, float $lambda, int|array|\Traversable $qubit): static
     {
-        return $this->append('u', [$qubit], [$theta, $phi, $lambda]);
+        foreach (self::normalizeQubitList($qubit) as $q) {
+            $this->append('u', [(int)$q], [$theta, $phi, $lambda]);
+        }
+        return $this;
     }
 
     // ---- 2量子ビットゲート ----
 
-    public function cx(int $control, int $target): static
+    public function cx(int|array|\Traversable $control, int|array|\Traversable $target): static
     {
-        if ($control === $target) {
-            throw new InvalidArgumentException('Control and target must differ.');
+        foreach (self::expandTwoQubitArgs($control, $target) as [$c, $t]) {
+            if ($c === $t) {
+                throw new InvalidArgumentException('Control and target must differ.');
+            }
+            $this->append('cx', [$c, $t]);
         }
-        return $this->append('cx', [$control, $target]);
+        return $this;
     }
 
     /** alias of cx() */
-    public function cnot(int $control, int $target): static
+    public function cnot(int|array|\Traversable $control, int|array|\Traversable $target): static
     {
         return $this->cx($control, $target);
     }
 
-    public function cz(int $control, int $target): static
+    public function cz(int|array|\Traversable $control, int|array|\Traversable $target): static
     {
-        if ($control === $target) {
-            throw new InvalidArgumentException('Control and target must differ.');
+        foreach (self::expandTwoQubitArgs($control, $target) as [$c, $t]) {
+            if ($c === $t) {
+                throw new InvalidArgumentException('Control and target must differ.');
+            }
+            $this->append('cz', [$c, $t]);
         }
-        return $this->append('cz', [$control, $target]);
+        return $this;
     }
 
-    public function swap(int $qubit1, int $qubit2): static
+    public function swap(int|array|\Traversable $qubit1, int|array|\Traversable $qubit2): static
     {
-        if ($qubit1 === $qubit2) {
-            throw new InvalidArgumentException('Swap qubits must differ.');
+        foreach (self::expandTwoQubitArgs($qubit1, $qubit2) as [$a, $b]) {
+            if ($a === $b) {
+                throw new InvalidArgumentException('Swap qubits must differ.');
+            }
+            $this->append('swap', [$a, $b]);
         }
-        return $this->append('swap', [$qubit1, $qubit2]);
+        return $this;
     }
 
     /**
      * 任意の1qubitユニタリ行列 [[a,b],[c,d]] を適用する.
      * 各要素は float(実数) または [re, im] / ['re'=>..,'im'=>..] / Complex オブジェクト.
      */
-    public function unitary(array $matrix, int $qubit): static
+    public function unitary(array $matrix, int|array|\Traversable $qubit): static
     {
         $flat = self::matrixToComplexPairs($matrix);
         if (count($flat) !== 4) {
             throw new InvalidArgumentException('unitary() requires a 2x2 matrix.');
         }
-        return $this->append('unitary', [$qubit], $flat);
+        foreach (self::normalizeQubitList($qubit) as $q) {
+            $this->append('unitary', [(int)$q], $flat);
+        }
+        return $this;
     }
 
     /**
@@ -271,12 +408,24 @@ class QuantumCircuit
 
     // ---- 測定・バリア ----
 
-    public function measure(int $qubit, int $clbit): static
+    public function measure(int|array|\Traversable $qubit, int|array|\Traversable $clbit): static
     {
-        $this->checkQubit($qubit);
-        $this->checkClbit($clbit);
-        $this->measureMap[$qubit] = $clbit;
-        return $this->append('measure', [$qubit], [], [$clbit]);
+        $qubits = self::normalizeQubitList($qubit);
+        $clbits = self::normalizeClbitList($clbit);
+        if (count($qubits) !== count($clbits)) {
+            throw new InvalidArgumentException(
+                'measure() qubit/clbit size mismatch: ' . count($qubits) . ' vs ' . count($clbits) . '.'
+            );
+        }
+        foreach ($qubits as $i => $q) {
+            $q = (int)$q;
+            $c = (int)$clbits[$i];
+            $this->checkQubit($q);
+            $this->checkClbit($c);
+            $this->measureMap[$q] = $c;
+            $this->append('measure', [$q], [], [$c]);
+        }
+        return $this;
     }
 
     public function measureAll(): static
@@ -304,18 +453,31 @@ class QuantumCircuit
         return $this;
     }
 
-    public function barrier(int ...$qubits): static
+    public function barrier(int|array|\Traversable ...$qubits): static
     {
-        if (count($qubits) === 0) {
-            $qubits = range(0, $this->numQubits - 1);
-        }
+        $flat = [];
         foreach ($qubits as $q) {
+            if ($q instanceof \Traversable) {
+                $q = iterator_to_array($q, false);
+            }
+            if (is_array($q)) {
+                foreach (array_values($q) as $v) {
+                    $flat[] = (int)$v;
+                }
+            } else {
+                $flat[] = (int)$q;
+            }
+        }
+        if (count($flat) === 0) {
+            $flat = range(0, $this->numQubits - 1);
+        }
+        foreach ($flat as $q) {
             $this->checkQubit($q);
         }
         // シミュレーション上は no-op として記録のみ
         $this->operations[] = [
             'name' => 'barrier',
-            'qubits' => array_values($qubits),
+            'qubits' => array_values($flat),
             'params' => [],
             'clbits' => [],
         ];
