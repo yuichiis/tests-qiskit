@@ -63,9 +63,7 @@ echo "After CNOT: ".$mo->toString($psi2)."\n";
 $probsArr = $la->scal(2.0, $la->log($la->abs($psi2)));
 echo $mo->toString($probsArr)."\n";
 $samples = $la->randomCategorical($probsArr, numSamples: 1024);
-$samplesArr = $la->toNDArray($samples)->toArray();
-$counts = array_fill(0,4,0);
-foreach($samplesArr as $s){ $counts[$s]++; }
+$counts = $la->bincount($samples,4);
 $labels = ['00','01','10','11'];
 foreach($counts as $i=>$c){
     echo $labels[$i].": ".$c."\n";

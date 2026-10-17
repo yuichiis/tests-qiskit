@@ -475,8 +475,9 @@ class StatevectorSimulator
 
     /**
      * 確率分布からショットをサンプリングする.
-     * Rindowの randomCategorical (Cレベル: cumsum+searchsorted+randomUniform) を使用し、
-     * 大規模dim/shotsでも高速に動作する。test.php の流儀に沿う。
+     * Rindowの randomCategorical (Cレベル: cumsum+searchsorted+randomUniform) でサンプリングし、
+     * カウントは bincount (C/OpenCLレベル) で集計する. ホスト側では
+     * 非ゼロ状態のビット列キー変換だけを行う (test.php の流儀)。
      * @param array<int,int> $measureMap
      * @return array<string,int> ビット列 => カウント
      */
@@ -488,19 +489,22 @@ class StatevectorSimulator
         // test.php の流儀: probs = square(abs(psi))
         $probsND = $this->la->scal(2.0, $this->la->log($this->la->abs($this->state)));
         $samplesND = $this->la->randomCategorical($probsND, numSamples: $shots, seed: $seed);
-        $samplesArr = $samplesND->toArray();
+        // 状態indexごとの出現件数を bincount で集計 (shots個のPHPカウントループ不要)
+        $stateCounts = $this->la->bincount($samplesND, $this->dim)->toArray();
         $counts = [];
-        foreach ($samplesArr as $idx) {
-            $idx = (int)$idx;
+        foreach ($stateCounts as $s => $n) {
+            if ($n == 0) {
+                continue;
+            }
             $bits = array_fill(0, $numClbits, 0);
             foreach ($measureMap as $q => $c) {
-                $bits[$c] = ($idx >> $q) & 1;
+                $bits[$c] = ((int)$s >> $q) & 1;
             }
             $key = '';
             for ($c = $numClbits - 1; $c >= 0; $c--) {
                 $key .= (string)$bits[$c];
             }
-            $counts[$key] = ($counts[$key] ?? 0) + 1;
+            $counts[$key] = ($counts[$key] ?? 0) + (int)$n;
         }
         ksort($counts);
         return $counts;
