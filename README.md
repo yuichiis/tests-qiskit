@@ -16,4 +16,4 @@ uv pip install qiskit matplotlib
 deactivate
 
 uv run --active python samples/test.py
-``
+```
