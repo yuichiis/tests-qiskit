@@ -5,6 +5,7 @@ namespace Rindow\Qubit;
 
 use InvalidArgumentException;
 use Rindow\Qubit\Quantum\StatevectorSimulator;
+use Rindow\Qubit\Circuit\UnitaryGate;
 
 /**
  * Qiskit互換の量子回路クラス (PHP版 qiskit::QuantumCircuit)
@@ -92,9 +93,21 @@ class QuantumCircuit
         }
     }
 
-    private function append(string|CircuitGate $gate, array $qubits, array $params = [], array $clbits = []): static
+    public function append(string|CircuitGate $gate, array $qubits, array $params = [], array $clbits = []): static
     {
-        $name = $gate instanceof CircuitGate ? $gate->name() : $gate;
+        if ($gate instanceof UnitaryGate) {
+            $params = $gate->parameters();
+            $name = UnitaryGate::NAME;
+            $dim = (int)sqrt(count($params) / 2);
+            $expected = (int)round(log($dim, 2));
+            if (count($qubits) !== $expected) {
+                throw new InvalidArgumentException("unitary() requires {$expected} qubits for a {$dim}x{$dim} matrix.");
+            }
+        } elseif ($gate instanceof CircuitGate) {
+            throw new InvalidArgumentException('Unsupported circuit gate object.');
+        } else {
+            $name = $gate;
+        }
         foreach ($qubits as $q) {
             $this->checkQubit($q);
         }
@@ -284,78 +297,21 @@ class QuantumCircuit
      */
     public function unitary(array $matrix, int|array|\Traversable $qubit): static
     {
-        $flat = self::matrixToComplexPairs($matrix);
-        $dim = (int)sqrt(count($flat) / 2);
-        if ($dim === 2) {
-            foreach (self::normalizeQubitList($qubit) as $q) {
-                $this->append('unitary', [(int)$q], $flat);
+        $qlist = array_map('intval', self::normalizeQubitList($qubit));
+        $gate = new UnitaryGate($matrix);
+        if ((int)sqrt(count($gate->parameters()) / 2) === 2) {
+            foreach ($qlist as $q) {
+                $this->append($gate, [$q]);
             }
             return $this;
         }
-        $qlist = array_map('intval', self::normalizeQubitList($qubit));
-        $k = 0;
-        for ($d = $dim; $d > 1; $d >>= 1) {
-            $k++;
-        }
-        if (count($qlist) !== $k) {
-            throw new InvalidArgumentException(
-                'unitary() requires ' . $k . ' qubits for a ' . $dim . 'x' . $dim . ' matrix.'
-            );
-        }
-        $this->append('unitary', array_values($qlist), $flat);
-        return $this;
+        return $this->append($gate, $qlist);
     }
 
     /**
      * @param array $matrix NxN (Nは2の冪)
      * @return array<float> 行優先の [re,im,...]
      */
-    private static function matrixToComplexPairs(array $matrix): array
-    {
-        $rows = array_values($matrix);
-        $dim = count($rows);
-        if ($dim < 2 || ($dim & ($dim - 1)) !== 0) {
-            throw new InvalidArgumentException('unitary() requires an NxN matrix (N=2^k).');
-        }
-        foreach ($rows as $row) {
-            if (count((array)$row) !== $dim) {
-                throw new InvalidArgumentException('unitary() requires an NxN matrix (N=2^k).');
-            }
-        }
-        $out = [];
-        foreach ($rows as $row) {
-            foreach ((array)$row as $v) {
-                [$re, $im] = self::toComplexPair($v);
-                $out[] = $re;
-                $out[] = $im;
-            }
-        }
-        return $out;
-    }
-
-    /** @return array{float,float} */
-    private static function toComplexPair(mixed $v): array
-    {
-        if (is_array($v)) {
-            if (array_key_exists('re', $v) || array_key_exists('im', $v)) {
-                return [(float)($v['re'] ?? 0.0), (float)($v['im'] ?? 0.0)];
-            }
-            if (count($v) === 2) {
-                $a = array_values($v);
-                return [(float)$a[0], (float)$a[1]];
-            }
-        }
-        if (is_object($v)) {
-            if (isset($v->real) || isset($v->imag)) {
-                return [(float)($v->real ?? 0.0), (float)($v->imag ?? 0.0)];
-            }
-            if (isset($v->re) || isset($v->im)) {
-                return [(float)($v->re ?? 0.0), (float)($v->im ?? 0.0)];
-            }
-        }
-        return [(float)$v, 0.0];
-    }
-
     // ---- 測定・バリア ----
 
     public function measure(int|array|\Traversable $qubit, int|array|\Traversable $clbit): static

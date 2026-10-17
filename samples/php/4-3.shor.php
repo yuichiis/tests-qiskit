@@ -10,6 +10,7 @@ require __DIR__ . '/../../vendor/autoload.php';
 # 実機・istsim でも 15や21の小さい数から試そうね
 
 use Rindow\Qubit\QuantumCircuit;
+use Rindow\Qubit\Circuit\UnitaryGate;
 use Rindow\Qubit\Primitives\StatevectorSampler;
 use Rindow\Qubit\Visualization\Visualization;
 
@@ -80,18 +81,8 @@ $qc->barrier();
 // 制御モジュラ乗算 U^{2^j} (|y> -> |a^{2^j} y mod N>)
 // j=0: ×7、j=1: ×7^2 ≡ ×4、j=2: ×7^4 ≡ ×1 (恒等変換なので省略)
 // ×4 mod 15 は qubitペアの入れ替えと等価なので Fredkin で書ける
-$fredkin = array_fill(0, 8, array_fill(0, 8, 0.0));
-for ($c = 0; $c <= 1; $c++) {
-    for ($x = 0; $x <= 1; $x++) {
-        for ($y = 0; $y <= 1; $y++) {
-            $old = $c + 2 * $x + 4 * $y;
-            [$nx, $ny] = $c ? [$y, $x] : [$x, $y];
-            $fredkin[$c + 2 * $nx + 4 * $ny][$old] = 1.0;
-        }
-    }
-}
-$qc->unitary($fredkin, [1, $n + 0, $n + 2]);
-$qc->unitary($fredkin, [1, $n + 1, $n + 3]);
+$qc->append(UnitaryGate::fredkin(), [1, $n + 0, $n + 2]);
+$qc->append(UnitaryGate::fredkin(), [1, $n + 1, $n + 3]);
 
 // ×7 mod 15 は置換ユニタリで作る (|15> は使わないので固定)
 $perm = array_fill(0, 16, array_fill(0, 16, 0.0));
@@ -99,16 +90,7 @@ for ($x = 0; $x < 15; $x++) {
     $perm[($a * $x) % $N][$x] = 1.0;
 }
 $perm[15][15] = 1.0;
-// 1qubit制御つき (制御が LSB) の 32x32 行列にする
-$cu = array_fill(0, 32, array_fill(0, 32, 0.0));
-for ($c = 0; $c <= 1; $c++) {
-    for ($t = 0; $t < 16; $t++) {
-        for ($u = 0; $u < 16; $u++) {
-            $cu[$c + 2 * $t][$c + 2 * $u] = $c ? $perm[$t][$u] : (($t == $u) ? 1.0 : 0.0);
-        }
-    }
-}
-$qc->unitary($cu, [0, $n + 0, $n + 1, $n + 2, $n + 3]);
+$qc->append((new UnitaryGate($perm))->control(), [0, $n + 0, $n + 1, $n + 2, $n + 3]);
 $qc->barrier();
 
 // 逆量子フーリエ変換 (カウント側、4-1 の QFT と逆向き・逆符号で)
