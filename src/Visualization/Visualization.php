@@ -30,21 +30,10 @@ class Visualization
         return implode("\n", $lines) . "\n";
     }
 
-    /** qiskit互換エイリアス (snake_case) */
-    public static function plot_histogram(array $counts, int $width = 40): string
-    {
-        return self::plotHistogram($counts, $width);
-    }
-
     /** @param array<string,int> $counts */
     public static function showHistogram(array $counts, int $width = 40): void
     {
         echo self::plotHistogram($counts, $width);
     }
 
-    /** qiskit互換エイリアス */
-    public static function show_histogram(array $counts, int $width = 40): void
-    {
-        self::showHistogram($counts, $width);
-    }
 }

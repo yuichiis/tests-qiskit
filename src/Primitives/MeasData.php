@@ -25,12 +25,6 @@ class MeasData
         return $this->counts;
     }
 
-    /** qiskit互換エイリアス */
-    public function get_counts(): array
-    {
-        return $this->counts;
-    }
-
     public function numShots(): int
     {
         return $this->numShots;
@@ -46,9 +40,4 @@ class MeasData
         return $probs;
     }
 
-    /** qiskit互換エイリアス */
-    public function get_probabilities(): array
-    {
-        return $this->getProbabilities();
-    }
 }
