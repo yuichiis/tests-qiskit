@@ -291,7 +291,8 @@ class QuantumCircuit
 
     /**
      * 任意のqubitユニタリ行列を適用する.
-     * 各要素は float(実数) または [re, im] / ['re'=>..,'im'=>..] / Complex オブジェクト.
+     * 各要素は float(実数) または real/imag を持つ複素数オブジェクト
+     * (['real'=>..,'imag'=>..] / Complex など). 単なる [re, im] ペアは不可.
      * 2x2 の場合は各qubitに適用する. Nqubit (4x4以上) の場合は
      * qiskit互換で qubits[0] を最小位 (LSB) として1回適用する.
      */
@@ -308,10 +309,6 @@ class QuantumCircuit
         return $this->append($gate, $qlist);
     }
 
-    /**
-     * @param array $matrix NxN (Nは2の冪)
-     * @return array<float> 行優先の [re,im,...]
-     */
     // ---- 測定・バリア ----
 
     public function measure(int|array|\Traversable $qubit, int|array|\Traversable $clbit): static
@@ -428,8 +425,8 @@ class QuantumCircuit
     }
 
     /**
-     * 最終状態ベクトルを返す. 各要素は ['re'=>float,'im'=>float].
-     * @return array<int,array{re:float,im:float}>
+     * 最終状態ベクトルを返す. 各要素は real/imag を持つ複素数オブジェクト.
+     * @return array<int,object{real:float,imag:float}>
      */
     public function statevector(): array
     {

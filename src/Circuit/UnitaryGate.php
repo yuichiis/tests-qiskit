@@ -14,7 +14,7 @@ class UnitaryGate implements CircuitGate
 
     public const NAME = 'unitary';
 
-    /** @var array<array{float,float}> Row-major complex [real, imaginary] pairs. */
+    /** @var array<object{real:float,imag:float}> Row-major complex numbers. */
     private array $matrix;
 
     public function __construct(array $matrix)
@@ -30,7 +30,10 @@ class UnitaryGate implements CircuitGate
         $dim = (int)sqrt(count($this->matrix));
         $controlDim = 1 << $numControls;
         $size = $dim * $controlDim;
-        $out = array_fill(0, $size * $size, [0.0, 0.0]);
+        $out = [];
+        for ($i = 0, $total = $size * $size; $i < $total; $i++) {
+            $out[] = (object)['real' => 0.0, 'imag' => 0.0];
+        }
         for ($row = 0; $row < $size; $row++) {
             for ($col = 0; $col < $size; $col++) {
                 $rowControl = $row % $controlDim;
@@ -41,13 +44,13 @@ class UnitaryGate implements CircuitGate
                 $dst = $row * $size + $col;
                 if ($rowControl === $controlDim - 1) {
                     $src = $rowTarget * $dim + $colTarget;
-                    $out[$dst] = $this->matrix[$src];
+                    $out[$dst] = clone $this->matrix[$src];
                 } elseif ($rowTarget === $colTarget) {
-                    $out[$dst] = [1.0, 0.0];
+                    $out[$dst] = (object)['real' => 1.0, 'imag' => 0.0];
                 }
             }
         }
-        return self::fromPairs($out);
+        return self::fromComplex($out);
     }
 
     public static function fredkin(): self
@@ -63,17 +66,17 @@ class UnitaryGate implements CircuitGate
         return new self($matrix);
     }
 
-    /** @return array<array{float,float}> Row-major complex [real, imaginary] pairs. */
+    /** @return array<object{real:float,imag:float}> Row-major complex numbers. */
     public function parameters(): array
     {
         return $this->matrix;
     }
 
-    private static function fromPairs(array $pairs): self
+    private static function fromComplex(array $values): self
     {
-        $dim = (int)sqrt(count($pairs));
+        $dim = (int)sqrt(count($values));
         $gate = new self(array_fill(0, $dim, array_fill(0, $dim, 0.0)));
-        $gate->matrix = $pairs;
+        $gate->matrix = $values;
         return $gate;
     }
 
@@ -90,24 +93,43 @@ class UnitaryGate implements CircuitGate
                 throw new InvalidArgumentException('unitary() requires an NxN matrix (N=2^k).');
             }
             foreach ($row as $value) {
-                if (is_array($value)) {
-                    $out[] = [
-                        (float)($value['re'] ?? $value[0] ?? 0.0),
-                        (float)($value['im'] ?? $value[1] ?? 0.0),
-                    ];
-                } elseif (is_object($value) && method_exists($value, 'getReal')) {
-                    $out[] = [(float)$value->getReal(), (float)$value->getImag()];
-                } elseif (is_object($value) && (isset($value->real) || isset($value->re))) {
-                    $out[] = [
-                        (float)($value->real ?? $value->re ?? 0.0),
-                        (float)($value->imag ?? $value->im ?? 0.0),
-                    ];
-                } else {
-                    $out[] = [(float)$value, 0.0];
-                }
+                $out[] = self::toComplex($value);
             }
         }
         return $out;
+    }
+
+    private static function toComplex(mixed $value): object
+    {
+        if (is_object($value)) {
+            if (method_exists($value, 'getReal')) {
+                return (object)[
+                    'real' => (float)$value->getReal(),
+                    'imag' => (float)$value->getImag(),
+                ];
+            }
+            if (property_exists($value, 'real') || isset($value->real)) {
+                return (object)[
+                    'real' => (float)$value->real,
+                    'imag' => (float)($value->imag ?? 0.0),
+                ];
+            }
+            throw new InvalidArgumentException(
+                'unitary() elements must be real numbers or complex objects with real/imag.'
+            );
+        }
+        if (is_array($value)) {
+            if (array_key_exists('real', $value) || array_key_exists('imag', $value)) {
+                return (object)[
+                    'real' => (float)($value['real'] ?? 0.0),
+                    'imag' => (float)($value['imag'] ?? 0.0),
+                ];
+            }
+            throw new InvalidArgumentException(
+                'unitary() does not accept plain [re, im] pairs; use real/imag.'
+            );
+        }
+        return (object)['real' => (float)$value, 'imag' => 0.0];
     }
 
 }

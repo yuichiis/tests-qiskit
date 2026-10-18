@@ -56,7 +56,7 @@ function neg_expected_cut(array $params, array $edges): float
     $qc = build_qaoa($gamma, $beta, $edges);
     $exp = 0.0;
     foreach ($qc->statevector() as $idx => $amp) {
-        $prob = $amp['re'] * $amp['re'] + $amp['im'] * $amp['im'];
+        $prob = $amp->real * $amp->real + $amp->imag * $amp->imag;
         if ($prob == 0.0) {
             continue;
         }

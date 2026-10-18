@@ -16,6 +16,6 @@ echo $qc->draw();
 
 $state = $qc->statevector();
 foreach ($state as $i => $amp) {
-    printf("%02b: %.4f%+.4fi\n", $i, $amp['re'], $amp['im']);
+    printf("%02b: %.4f%+.4fi\n", $i, $amp->real, $amp->imag);
 }
 # 期待：|00>入力のQFTは一様な重ね合わせ (0.5ずつ)

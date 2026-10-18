@@ -147,15 +147,15 @@ class StatevectorSimulator
                 $this->applyU((float)$params[0], (float)$params[1], (float)$params[2], $qubits[0]);
                 break;
             case 'unitary':
-                // paramsは行優先の複素[re,im]ペア
+                // paramsは行優先の real/imag を持つ複素数オブジェクト
                 $dim = (int)sqrt(count($params));
                 $mat = [];
                 $idx = 0;
                 for ($i = 0; $i < $dim; $i++) {
                     $row = [];
                     for ($j = 0; $j < $dim; $j++) {
-                        [$re, $im] = $params[$idx];
-                        $row[] = C((float)$re, (float)$im);
+                        $c = $params[$idx];
+                        $row[] = C((float)$c->real, (float)$c->imag);
                         $idx++;
                     }
                     $mat[] = $row;
@@ -414,7 +414,7 @@ class StatevectorSimulator
             ->reshape([$this->dim]);
     }
 
-    /** @return array<int,array{re:float,im:float}> */
+    /** @return array<int,object{real:float,imag:float}> */
     public function getStatevector(): array
     {
         $buf = $this->state->buffer();
@@ -422,7 +422,7 @@ class StatevectorSimulator
         $out = [];
         for ($i = 0; $i < $this->dim; $i++) {
             $c = $buf[$off + $i];
-            $out[] = ['re' => (float)$c->real, 'im' => (float)$c->imag];
+            $out[] = (object)['real' => (float)$c->real, 'imag' => (float)$c->imag];
         }
         return $out;
     }
