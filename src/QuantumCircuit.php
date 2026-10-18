@@ -28,7 +28,7 @@ class QuantumCircuit
 
     private int $numQubits;
     private int $numClbits;
-    /** @var array<int,array{name:string,qubits:array<int>,params:array<float>,clbits:array<int>}> */
+    /** @var array<int,array{name:string,qubits:array<int>,params:array<mixed>,clbits:array<int>}> */
     private array $operations = [];
     /** @var array<int,int> qubit => clbit の測定マップ */
     private array $measureMap = [];
@@ -67,7 +67,7 @@ class QuantumCircuit
         return $this->numClbits;
     }
 
-    /** @return array<int,array{name:string,qubits:array<int>,params:array<float>,clbits:array<int>}> */
+    /** @return array<int,array{name:string,qubits:array<int>,params:array<mixed>,clbits:array<int>}> */
     public function operations(): array
     {
         return $this->operations;
@@ -98,7 +98,7 @@ class QuantumCircuit
         if ($gate instanceof UnitaryGate) {
             $params = $gate->parameters();
             $name = UnitaryGate::NAME;
-            $dim = (int)sqrt(count($params) / 2);
+            $dim = (int)sqrt(count($params));
             $expected = (int)round(log($dim, 2));
             if (count($qubits) !== $expected) {
                 throw new InvalidArgumentException("unitary() requires {$expected} qubits for a {$dim}x{$dim} matrix.");
@@ -299,7 +299,7 @@ class QuantumCircuit
     {
         $qlist = array_map('intval', self::normalizeQubitList($qubit));
         $gate = new UnitaryGate($matrix);
-        if ((int)sqrt(count($gate->parameters()) / 2) === 2) {
+        if ((int)sqrt(count($gate->parameters())) === 2) {
             foreach ($qlist as $q) {
                 $this->append($gate, [$q]);
             }

@@ -94,7 +94,7 @@ class StatevectorSimulator
         }
     }
 
-    /** @param array<int> $qubits @param array<float> $params */
+    /** @param array<int> $qubits @param array<mixed> $params */
     public function applyOperation(string $name, array $qubits, array $params = []): void
     {
         switch (strtolower($name)) {
@@ -147,26 +147,25 @@ class StatevectorSimulator
                 $this->applyU((float)$params[0], (float)$params[1], (float)$params[2], $qubits[0]);
                 break;
             case 'unitary':
-                if (count($params) === 8) {
-                    $this->applySingle($qubits[0], [
-                        [C((float)$params[0], (float)$params[1]), C((float)$params[2], (float)$params[3])],
-                        [C((float)$params[4], (float)$params[5]), C((float)$params[6], (float)$params[7])],
-                    ]);
-                    break;
-                }
-                // Nqubitユニタリ: paramsを行優先で復元し、qiskit順(LSB first)を
-                // MSB firstに直して applyNQubit に渡す
-                $dim = (int)sqrt(count($params) / 2);
+                // paramsは行優先の複素[re,im]ペア
+                $dim = (int)sqrt(count($params));
                 $mat = [];
                 $idx = 0;
                 for ($i = 0; $i < $dim; $i++) {
                     $row = [];
                     for ($j = 0; $j < $dim; $j++) {
-                        $row[] = C((float)$params[$idx], (float)$params[$idx + 1]);
-                        $idx += 2;
+                        [$re, $im] = $params[$idx];
+                        $row[] = C((float)$re, (float)$im);
+                        $idx++;
                     }
                     $mat[] = $row;
                 }
+                if ($dim === 2) {
+                    $this->applySingle($qubits[0], $mat);
+                    break;
+                }
+                // Nqubitユニタリ: qiskit順(LSB first)をMSB firstに直して
+                // applyNQubit に渡す
                 $this->applyNQubit(array_reverse($qubits), $mat);
                 break;
             case 'cx':

@@ -14,7 +14,7 @@ class UnitaryGate implements CircuitGate
 
     public const NAME = 'unitary';
 
-    /** @var array<float> Row-major real/imaginary pairs. */
+    /** @var array<array{float,float}> Row-major complex [real, imaginary] pairs. */
     private array $matrix;
 
     public function __construct(array $matrix)
@@ -27,10 +27,10 @@ class UnitaryGate implements CircuitGate
         if ($numControls < 1) {
             throw new InvalidArgumentException('numControls must be at least 1.');
         }
-        $dim = (int)sqrt(count($this->matrix) / 2);
+        $dim = (int)sqrt(count($this->matrix));
         $controlDim = 1 << $numControls;
         $size = $dim * $controlDim;
-        $out = array_fill(0, 2 * $size * $size, 0.0);
+        $out = array_fill(0, $size * $size, [0.0, 0.0]);
         for ($row = 0; $row < $size; $row++) {
             for ($col = 0; $col < $size; $col++) {
                 $rowControl = $row % $controlDim;
@@ -38,13 +38,12 @@ class UnitaryGate implements CircuitGate
                 if ($rowControl !== $colControl) continue;
                 $rowTarget = intdiv($row, $controlDim);
                 $colTarget = intdiv($col, $controlDim);
-                $dst = 2 * ($row * $size + $col);
+                $dst = $row * $size + $col;
                 if ($rowControl === $controlDim - 1) {
-                    $src = 2 * ($rowTarget * $dim + $colTarget);
+                    $src = $rowTarget * $dim + $colTarget;
                     $out[$dst] = $this->matrix[$src];
-                    $out[$dst + 1] = $this->matrix[$src + 1];
                 } elseif ($rowTarget === $colTarget) {
-                    $out[$dst] = 1.0;
+                    $out[$dst] = [1.0, 0.0];
                 }
             }
         }
@@ -64,7 +63,7 @@ class UnitaryGate implements CircuitGate
         return new self($matrix);
     }
 
-    /** @return array<float> */
+    /** @return array<array{float,float}> Row-major complex [real, imaginary] pairs. */
     public function parameters(): array
     {
         return $this->matrix;
@@ -72,7 +71,7 @@ class UnitaryGate implements CircuitGate
 
     private static function fromPairs(array $pairs): self
     {
-        $dim = (int)sqrt(count($pairs) / 2);
+        $dim = (int)sqrt(count($pairs));
         $gate = new self(array_fill(0, $dim, array_fill(0, $dim, 0.0)));
         $gate->matrix = $pairs;
         return $gate;
@@ -92,17 +91,19 @@ class UnitaryGate implements CircuitGate
             }
             foreach ($row as $value) {
                 if (is_array($value)) {
-                    $out[] = (float)($value['re'] ?? $value[0] ?? 0.0);
-                    $out[] = (float)($value['im'] ?? $value[1] ?? 0.0);
+                    $out[] = [
+                        (float)($value['re'] ?? $value[0] ?? 0.0),
+                        (float)($value['im'] ?? $value[1] ?? 0.0),
+                    ];
                 } elseif (is_object($value) && method_exists($value, 'getReal')) {
-                    $out[] = (float)$value->getReal();
-                    $out[] = (float)$value->getImag();
+                    $out[] = [(float)$value->getReal(), (float)$value->getImag()];
                 } elseif (is_object($value) && (isset($value->real) || isset($value->re))) {
-                    $out[] = (float)($value->real ?? $value->re ?? 0.0);
-                    $out[] = (float)($value->imag ?? $value->im ?? 0.0);
+                    $out[] = [
+                        (float)($value->real ?? $value->re ?? 0.0),
+                        (float)($value->imag ?? $value->im ?? 0.0),
+                    ];
                 } else {
-                    $out[] = (float)$value;
-                    $out[] = 0.0;
+                    $out[] = [(float)$value, 0.0];
                 }
             }
         }
