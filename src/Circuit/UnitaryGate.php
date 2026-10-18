@@ -6,7 +6,9 @@ namespace Rindow\Qubit\Circuit;
 use Rindow\Qubit\CircuitUtils;
 use InvalidArgumentException;
 
-class UnitaryGate extends AbstractGate
+use Rindow\Qubit\CircuitGate;
+
+class UnitaryGate implements CircuitGate
 {
     use CircuitUtils;
 

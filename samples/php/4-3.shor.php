@@ -13,56 +13,9 @@ use Rindow\Qubit\QuantumCircuit;
 use Rindow\Qubit\Circuit\UnitaryGate;
 use Rindow\Qubit\Primitives\StatevectorSampler;
 use Rindow\Qubit\Visualization\Visualization;
+use Rindow\Qubit\Math\Fraction;
+use Rindow\Qubit\Math\IntMath;
 
-function shor_gcd(int $a, int $b): int
-{
-    $a = abs($a);
-    $b = abs($b);
-    while ($b != 0) {
-        [$a, $b] = [$b, $a % $b];
-    }
-    return $a;
-}
-
-function shor_powmod(int $base, int $exp, int $mod): int
-{
-    $r = 1 % $mod;
-    $base %= $mod;
-    while ($exp > 0) {
-        if ($exp & 1) {
-            $r = ($r * $base) % $mod;
-        }
-        $base = ($base * $base) % $mod;
-        $exp >>= 1;
-    }
-    return $r;
-}
-
-/** 連分数で分母上限つきの近似分数 [p, q] を返す */
-function shor_limit_denominator(int $num, int $den, int $maxDen): array
-{
-    $cf = [];
-    while ($den != 0) {
-        $cf[] = intdiv($num, $den);
-        [$num, $den] = [$den, $num % $den];
-    }
-    $p0 = 1;
-    $p1 = $cf[0];
-    $q0 = 0;
-    $q1 = 1;
-    $best = [$p1, $q1];
-    for ($i = 1; $i < count($cf); $i++) {
-        $p2 = $cf[$i] * $p1 + $p0;
-        $q2 = $cf[$i] * $q1 + $q0;
-        if ($q2 > $maxDen) {
-            break;
-        }
-        $best = [$p2, $q2];
-        [$p0, $p1] = [$p1, $p2];
-        [$q0, $q1] = [$q1, $q2];
-    }
-    return $best;
-}
 
 $N = 15;
 $a = 7;
@@ -118,11 +71,11 @@ Visualization::showHistogram($counts);
 $found = [];
 foreach ($counts as $bits => $c) {
     $s = str_pad((string)$bits, $n, '0', STR_PAD_LEFT);
-    [, $r] = shor_limit_denominator(bindec($s), 2 ** $n, $N);
+    [, $r] = Fraction::limitDenominator(bindec($s), 2 ** $n, $N);
     for ($t = $r; $t < $N; $t += $r) {  // r が真の周期の約数だった場合も倍数で試す
-        if ($t % 2 == 0 && shor_powmod($a, $t, $N) == 1) {
+        if ($t % 2 == 0 && IntMath::powmod($a, $t, $N) == 1) {
             $e = $a ** intdiv($t, 2);
-            foreach ([shor_gcd($e - 1, $N), shor_gcd($e + 1, $N)] as $f) {
+            foreach ([IntMath::gcd($e - 1, $N), IntMath::gcd($e + 1, $N)] as $f) {
                 if ($f > 1 && $f < $N) {
                     $found[$f] = true;
                 }
