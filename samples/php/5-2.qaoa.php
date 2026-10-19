@@ -8,6 +8,7 @@ require __DIR__ . '/../../vendor/autoload.php';
 # 調整してカット数の期待値を最大化するハイブリッド算法だよ！
 
 use Rindow\Qubit\QuantumCircuit;
+use Rindow\Qubit\Quantum\StatevectorSimulator;
 use Rindow\Qubit\Primitives\StatevectorSampler;
 use Rindow\Qubit\Visualization\Visualization;
 use Rindow\Qubit\Math\NelderMead;
@@ -54,16 +55,10 @@ function neg_expected_cut(array $params, array $edges): float
     // 状態ベクトルからカット数の期待値を正確に求める (最適化用)
     [$gamma, $beta] = $params;
     $qc = build_qaoa($gamma, $beta, $edges);
-    $sim = new StatevectorSampler();
-    $result = $sim->run([$qc])->result();
-    $state = $result[0]->data->statevector->getStatevector();
+    $sim = new StatevectorSimulator($qc->numQubits());
+    $sim->applyCircuit($qc);
     $exp = 0.0;
-    foreach ($state as $idx => $amp) {
-        $prob = $amp->real * $amp->real + $amp->imag * $amp->imag;
-        if ($prob == 0.0) {
-            continue;
-        }
-        $bits = str_pad(decbin($idx), 4, '0', STR_PAD_LEFT);
+    foreach ($sim->probabilities() as $bits => $prob) {
         $exp += $prob * cut_value($bits, $edges);
     }
     return -$exp;
