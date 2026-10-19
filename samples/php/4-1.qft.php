@@ -6,6 +6,7 @@ require __DIR__ . '/../../vendor/autoload.php';
 # 位相推定やショア法の部品だよ。まずは2量子ビットで回してみよう！
 
 use Rindow\Qubit\QuantumCircuit;
+use Rindow\Qubit\Primitives\StatevectorSampler;
 
 $qc = new QuantumCircuit(2);
 $qc->h(1);
@@ -14,7 +15,9 @@ $qc->h(0);
 $qc->swap(0, 1);
 echo $qc->draw();
 
-$state = $qc->statevector();
+$sim = new StatevectorSampler();
+$result = $sim->run([$qc], shots: 1024)->result();
+$state = $result[0]->data->statevector->getStatevector();
 foreach ($state as $i => $amp) {
     printf("%02b: %.4f%+.4fi\n", $i, $amp->real, $amp->imag);
 }

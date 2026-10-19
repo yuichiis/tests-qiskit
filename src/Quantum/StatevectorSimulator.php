@@ -486,8 +486,8 @@ class StatevectorSimulator
             throw new InvalidArgumentException('shots must be >= 1.');
         }
         // test.php の流儀: probs = square(abs(psi))
-        $probsND = $this->la->scal(2.0, $this->la->log($this->la->abs($this->state)));
-        $samplesND = $this->la->randomCategorical($probsND, numSamples: $shots, seed: $seed);
+        $probsLogitsND = $this->la->scal(2.0, $this->la->log($this->la->abs($this->state)));
+        $samplesND = $this->la->randomCategorical($probsLogitsND, numSamples: $shots, seed: $seed);
         // 状態indexごとの出現件数を bincount で集計 (shots個のPHPカウントループ不要)
         $stateCounts = $this->la->bincount($samplesND, $this->dim)->toArray();
         $counts = [];

@@ -54,8 +54,11 @@ function neg_expected_cut(array $params, array $edges): float
     // 状態ベクトルからカット数の期待値を正確に求める (最適化用)
     [$gamma, $beta] = $params;
     $qc = build_qaoa($gamma, $beta, $edges);
+    $sim = new StatevectorSampler();
+    $result = $sim->run([$qc])->result();
+    $state = $result[0]->data->statevector->getStatevector();
     $exp = 0.0;
-    foreach ($qc->statevector() as $idx => $amp) {
+    foreach ($state as $idx => $amp) {
         $prob = $amp->real * $amp->real + $amp->imag * $amp->imag;
         if ($prob == 0.0) {
             continue;

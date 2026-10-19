@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace Rindow\Qubit;
 
 use InvalidArgumentException;
-use Rindow\Qubit\Quantum\StatevectorSimulator;
 use Rindow\Qubit\Circuit\UnitaryGate;
 
 /**
@@ -422,28 +421,6 @@ class QuantumCircuit
             $maxDepth = max($maxDepth, $d);
         }
         return $maxDepth;
-    }
-
-    /**
-     * 最終状態ベクトルを返す. 各要素は real/imag を持つ複素数オブジェクト.
-     * @return array<int,object{real:float,imag:float}>
-     */
-    public function statevector(): array
-    {
-        $sim = new StatevectorSimulator($this->numQubits);
-        $sim->applyCircuit($this);
-        return $sim->getStatevector();
-    }
-
-    /**
-     * 計算基底の確率分布を返す. キーは qiskit形式ビット列 ('00' 等).
-     * @return array<string,float>
-     */
-    public function probabilities(): array
-    {
-        $sim = new StatevectorSimulator($this->numQubits);
-        $sim->applyCircuit($this);
-        return $sim->probabilities($this->effectiveMeasureMap());
     }
 
     /**

@@ -10,9 +10,15 @@ class PubResult
 {
     public PubData $data;
 
-    /** @param array<string,int> $counts */
-    public function __construct(array $counts, int $numShots)
+    /**
+     * @param array<string,int> $counts
+     * @param array<int,object{real:float,imag:float}> $statevector
+     */
+    public function __construct(array $counts, int $numShots, array $statevector = [])
     {
-        $this->data = new PubData(new MeasData($counts, $numShots));
+        $this->data = new PubData(
+            new MeasData($counts, $numShots),
+            new StatevectorData($statevector)
+        );
     }
 }

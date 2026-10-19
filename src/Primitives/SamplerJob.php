@@ -34,10 +34,11 @@ class SamplerJob
             $circuitSeed = $seed === null ? null : $seed + $i;
             $sim = new StatevectorSimulator($circuit->numQubits());
             $sim->applyCircuit($circuit);
+            $statevector = $sim->getStatevector();
             $map = $circuit->effectiveMeasureMap();
             $numClbits = $circuit->effectiveNumClbits();
             $counts = $sim->sampleCounts($map, $numClbits, $shots, $circuitSeed);
-            $this->pubResults[] = new PubResult($counts, $shots);
+            $this->pubResults[] = new PubResult($counts, $shots, $statevector);
         }
     }
 
