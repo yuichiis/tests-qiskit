@@ -7,6 +7,7 @@ use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
 use Rindow\Math\Matrix\MatrixOperator;
 use Rindow\Qubit\QuantumCircuit;
+use Rindow\Qubit\Math\IntMath;
 use function Rindow\Math\Matrix\C;
 
 /**
@@ -473,7 +474,7 @@ class StatevectorSimulator
                 if ($p == 0.0) {
                     continue;
                 }
-                $counts[str_pad(decbin($s), $numClbits, '0', STR_PAD_LEFT)] = $p;
+                $counts[IntMath::int2bit($s, $numClbits)] = $p;
             }
             return $counts;
         }
@@ -498,7 +499,7 @@ class StatevectorSimulator
             if ($p == 0.0) {
                 continue;
             }
-            $counts[str_pad(decbin($t), $numClbits, '0', STR_PAD_LEFT)] = $p;
+            $counts[IntMath::int2bit($t, $numClbits)] = $p;
         }
         return $counts;
     }
@@ -526,14 +527,15 @@ class StatevectorSimulator
             if ($n == 0) {
                 continue;
             }
-            $bits = array_fill(0, $numClbits, 0);
+            $t = 0;
             foreach ($measureMap as $q => $c) {
-                $bits[$c] = ((int)$s >> $q) & 1;
+                if ($c < 0 || $c >= $numClbits) {
+                    continue;
+                }
+                $bit = ((int)$s >> $q) & 1;
+                $t = ($t & ~(1 << $c)) | ($bit << $c);
             }
-            $key = '';
-            for ($c = $numClbits - 1; $c >= 0; $c--) {
-                $key .= (string)$bits[$c];
-            }
+            $key = IntMath::int2bit($t, $numClbits);
             $counts[$key] = ($counts[$key] ?? 0) + (int)$n;
         }
         ksort($counts);

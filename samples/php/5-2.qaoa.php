@@ -12,6 +12,7 @@ use Rindow\Qubit\Quantum\StatevectorSimulator;
 use Rindow\Qubit\Primitives\StatevectorSampler;
 use Rindow\Qubit\Visualization\Visualization;
 use Rindow\Qubit\Math\NelderMead;
+use Rindow\Qubit\Math\IntMath;
 
 // 4点リング：辺 (0-1, 1-2, 2-3, 3-0)
 $edges = [[0, 1], [1, 2], [2, 3], [3, 0]];
@@ -84,7 +85,7 @@ Visualization::showHistogram($counts);
 
 // 答えの表示：カット数（両端が別グループの辺の数）が最大のビット列を探す
 // (カウントのキーは数値化されることがあるので4桁に正規化する)
-$norm = static fn($bits) => str_pad((string)$bits, 4, '0', STR_PAD_LEFT);
+$norm = static fn($bits) => IntMath::int2bit((int)$bits, 4);
 $best = 0;
 foreach ($counts as $bits => $c) {
     $best = max($best, cut_value($norm($bits), $edges));

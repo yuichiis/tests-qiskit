@@ -7,6 +7,7 @@ require __DIR__ . '/../../vendor/autoload.php';
 
 use Rindow\Qubit\QuantumCircuit;
 use Rindow\Qubit\Primitives\StatevectorSampler;
+use Rindow\Qubit\Math\IntMath;
 
 $qc = new QuantumCircuit(2);
 $qc->h(1);
@@ -19,6 +20,6 @@ $sim = new StatevectorSampler();
 $result = $sim->run([$qc], shots: 1024)->result();
 $state = $result[0]->data->statevector->getStatevector();
 foreach ($state as $i => $amp) {
-    printf("%02b: %.4f%+.4fi\n", $i, $amp->real, $amp->imag);
+    printf("%s: %.4f%+.4fi\n", IntMath::int2bit($i, 2), $amp->real, $amp->imag);
 }
 # 期待：|00>入力のQFTは一様な重ね合わせ (0.5ずつ)

@@ -70,7 +70,7 @@ Visualization::showHistogram($counts);
 // 古典後処理：連分数で周期 r を求めて因数にする
 $found = [];
 foreach ($counts as $bits => $c) {
-    $s = str_pad((string)$bits, $n, '0', STR_PAD_LEFT);
+    $s = IntMath::int2bit((int)$bits, $n);
     [, $r] = Fraction::limitDenominator(bindec($s), 2 ** $n, $N);
     for ($t = $r; $t < $N; $t += $r) {  // r が真の周期の約数だった場合も倍数で試す
         if ($t % 2 == 0 && IntMath::powmod($a, $t, $N) == 1) {

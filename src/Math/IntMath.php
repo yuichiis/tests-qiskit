@@ -15,6 +15,11 @@ class IntMath
         return $a;
     }
 
+    public static function int2bit(int $num, int $bits): string
+    {
+        return str_pad(decbin($num), $bits, '0', STR_PAD_LEFT);
+    }
+
     public static function powmod(int $base, int $exp, int $mod): int
     {
         $r = 1 % $mod;
