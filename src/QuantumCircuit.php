@@ -5,6 +5,7 @@ namespace Rindow\Qubit;
 
 use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
+use Rindow\Qubit\Circuit\QFTGate;
 use Rindow\Qubit\Circuit\UnitaryGate;
 
 /**
@@ -95,13 +96,13 @@ class QuantumCircuit
 
     public function append(string|CircuitGate $gate, array $qubits, array|NDArray $params = [], array $clbits = []): static
     {
-        if ($gate instanceof UnitaryGate) {
+        if ($gate instanceof UnitaryGate || $gate instanceof QFTGate) {
             $params = $gate->matrix();
-            $name = UnitaryGate::NAME;
+            $name = $gate instanceof QFTGate ? QFTGate::NAME : UnitaryGate::NAME;
             $dim = $gate->dimension();
             $expected = (int)round(log($dim, 2));
             if (count($qubits) !== $expected) {
-                throw new InvalidArgumentException("unitary() requires {$expected} qubits for a {$dim}x{$dim} matrix.");
+                throw new InvalidArgumentException("{$name}() requires {$expected} qubits for a {$dim}x{$dim} matrix.");
             }
         } elseif ($gate instanceof CircuitGate) {
             throw new InvalidArgumentException('Unsupported circuit gate object.');
@@ -457,7 +458,7 @@ class QuantumCircuit
         /** @var array<int,array{cells:array<int,string>,used:array<int,bool>,usedClbits:array<int,bool>,barrier:bool}> $columns */
         $columns = [];
         foreach ($this->operations as $op) {
-            $label = $op['name'];
+            $label = $op['name'] === 'qft' ? 'QFT' : $op['name'];
             if (in_array($op['name'], ['rx', 'ry', 'rz', 'p'], true)) {
                 $label .= sprintf('(%.3g)', $op['params'][0]);
             } elseif ($op['name'] === 'u') {
@@ -514,9 +515,10 @@ class QuantumCircuit
                 for ($q = min($a, $b) + 1; $q < max($a, $b); $q++) {
                     $contrib[$q] = '│';
                 }
-            } elseif ($op['name'] === 'unitary' && count($qs) > 1) {
+            } elseif (($op['name'] === 'unitary' || $op['name'] === 'qft') && count($qs) > 1) {
+                $symbol = $op['name'] === 'qft' ? 'QFT' : 'U';
                 foreach ($qs as $q) {
-                    $contrib[$q] = 'U';
+                    $contrib[$q] = $symbol;
                 }
                 $span = range(min($qs), max($qs));
                 for ($q = min($qs) + 1; $q < max($qs); $q++) {

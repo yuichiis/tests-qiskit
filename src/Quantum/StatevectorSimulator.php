@@ -143,7 +143,8 @@ class StatevectorSimulator
                 $this->applyU((float)$params[0], (float)$params[1], (float)$params[2], $qubits[0]);
                 break;
             case 'unitary':
-                // 通常は UnitaryGate が保持する NDArray がそのまま渡される。
+            case 'qft':
+                // 通常は UnitaryGate / QFTGate が保持する NDArray がそのまま渡される。
                 // 直接呼び出し互換のため、旧形式の複素オブジェクト配列も受け付ける。
                 $mat = $params instanceof NDArray
                     ? $params
