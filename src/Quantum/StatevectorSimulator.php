@@ -427,12 +427,25 @@ class StatevectorSimulator
         return $out;
     }
 
-    /** @return array<float> 計算基底の確率 */
-    public function getProbabilities(): array
+    /** @return NDArray 計算基底の確率 (float64, shape [dim]) */
+    public function getProbabilities(): NDArray
     {
         // test.php の流儀: probs = square(abs(psi))
-        $probs = $this->la->square($this->la->abs($this->state));
-        return $probs->toArray();
+        return $this->la->square($this->la->abs($this->state));
+    }
+
+    /** @param array<int,int> $measureMap */
+    private function isIdentityMeasureMap(array $measureMap): bool
+    {
+        if (count($measureMap) !== $this->numQubits) {
+            return false;
+        }
+        for ($q = 0; $q < $this->numQubits; $q++) {
+            if (!array_key_exists($q, $measureMap) || (int)$measureMap[$q] !== $q) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -452,23 +465,41 @@ class StatevectorSimulator
         if ($numClbits <= 0) {
             $numClbits = max(array_values($measureMap)) + 1;
         }
-        $counts = [];
+        // 恒等マップ (q -> q) なら state index がそのまま計測ビット列になるため、
+        // index変換表と scatterAdd を省き、reshape した確率をそのまま読む。
+        if ($this->isIdentityMeasureMap($measureMap) && $numClbits >= $this->numQubits) {
+            $counts = [];
+            foreach ($stateProbs->reshape([$this->dim])->toArray() as $s => $p) {
+                if ($p == 0.0) {
+                    continue;
+                }
+                $counts[str_pad(decbin($s), $numClbits, '0', STR_PAD_LEFT)] = $p;
+            }
+            return $counts;
+        }
+        // state index -> clbit index の変換表を作り、scatterAdd で集計する.
+        // measureMap に同じ clbit が複数回現れた場合は後勝ち (従来動作)。
+        $indices = $this->mo->zeros([$this->dim], NDArray::int32);
         for ($s = 0; $s < $this->dim; $s++) {
-            $p = $stateProbs[$s];
+            $t = 0;
+            foreach ($measureMap as $q => $c) {
+                if ($c < 0 || $c >= $numClbits) {
+                    continue;
+                }
+                $bit = ($s >> $q) & 1;
+                $t = ($t & ~(1 << $c)) | ($bit << $c);
+            }
+            $indices[$s] = $t;
+        }
+        $scattered = $this->mo->zeros([1 << $numClbits], NDArray::float64);
+        $this->la->scatterAdd($indices, $stateProbs, $scattered);
+        $counts = [];
+        foreach ($scattered->toArray() as $t => $p) {
             if ($p == 0.0) {
                 continue;
             }
-            $bits = array_fill(0, $numClbits, 0);
-            foreach ($measureMap as $q => $c) {
-                $bits[$c] = ($s >> $q) & 1;
-            }
-            $key = '';
-            for ($c = $numClbits - 1; $c >= 0; $c--) {
-                $key .= (string)$bits[$c];
-            }
-            $counts[$key] = ($counts[$key] ?? 0.0) + $p;
+            $counts[str_pad(decbin($t), $numClbits, '0', STR_PAD_LEFT)] = $p;
         }
-        ksort($counts);
         return $counts;
     }
 
