@@ -3,10 +3,14 @@ declare(strict_types=1);
 
 namespace Rindow\Qubit\Circuit;
 
-use Rindow\Qubit\CircuitUtils;
 use InvalidArgumentException;
-
+use Interop\Polite\Math\Matrix\NDArray;
+use Rindow\Math\Matrix\Complex;
+use Rindow\Math\Matrix\MatrixOperator;
+use Rindow\Qubit\CircuitUtils;
 use Rindow\Qubit\CircuitGate;
+use Rindow\Qubit\Math\MatrixOperatorProvider;
+use function Rindow\Math\Matrix\C;
 
 class UnitaryGate implements CircuitGate
 {
@@ -14,12 +18,14 @@ class UnitaryGate implements CircuitGate
 
     public const NAME = 'unitary';
 
-    /** @var array<object{real:float,imag:float}> Row-major complex numbers. */
-    private array $matrix;
+    /** @var NDArray complex128, shape [dim, dim], row-major. */
+    private NDArray $matrix;
+    private MatrixOperator $mo;
 
-    public function __construct(array $matrix)
+    public function __construct(array|NDArray $matrix, ?MatrixOperator $mo = null)
     {
-        $this->matrix = self::matrixToComplexPairs($matrix);
+        $this->mo = $mo ?? MatrixOperatorProvider::get();
+        $this->matrix = $this->normalizeMatrix($matrix);
     }
 
     public function control(int $numControls = 1): self
@@ -27,13 +33,11 @@ class UnitaryGate implements CircuitGate
         if ($numControls < 1) {
             throw new InvalidArgumentException('numControls must be at least 1.');
         }
-        $dim = (int)sqrt(count($this->matrix));
+        $dim = $this->dimension();
         $controlDim = 1 << $numControls;
         $size = $dim * $controlDim;
-        $out = [];
-        for ($i = 0, $total = $size * $size; $i < $total; $i++) {
-            $out[] = (object)['real' => 0.0, 'imag' => 0.0];
-        }
+        $out = $this->mo->zeros([$size * $size], NDArray::complex128);
+        $src = $this->matrix->reshape([$dim * $dim]);
         for ($row = 0; $row < $size; $row++) {
             for ($col = 0; $col < $size; $col++) {
                 $rowControl = $row % $controlDim;
@@ -43,76 +47,100 @@ class UnitaryGate implements CircuitGate
                 $colTarget = intdiv($col, $controlDim);
                 $dst = $row * $size + $col;
                 if ($rowControl === $controlDim - 1) {
-                    $src = $rowTarget * $dim + $colTarget;
-                    $out[$dst] = clone $this->matrix[$src];
+                    $srcIndex = $rowTarget * $dim + $colTarget;
+                    $out[$dst] = $src[$srcIndex];
                 } elseif ($rowTarget === $colTarget) {
-                    $out[$dst] = (object)['real' => 1.0, 'imag' => 0.0];
+                    $out[$dst] = C(1.0, 0.0);
                 }
             }
         }
-        return self::fromComplex($out);
+        return new self($out->reshape([$size, $size]), $this->mo);
     }
 
     public static function fredkin(): self
     {
-        $matrix = array_fill(0, 8, array_fill(0, 8, 0.0));
-        for ($input = 0; $input < 8; $input++) {
+        $mo = MatrixOperatorProvider::get();
+        $dim = 8;
+        $matrix = $mo->zeros([$dim * $dim], NDArray::complex128);
+        for ($input = 0; $input < $dim; $input++) {
             $control = $input & 1;
             $a = ($input >> 1) & 1;
             $b = ($input >> 2) & 1;
             $output = $control ? ($control | ($b << 1) | ($a << 2)) : $input;
-            $matrix[$output][$input] = 1.0;
+            $matrix[$output * $dim + $input] = C(1.0, 0.0);
         }
-        return new self($matrix);
+        return new self($matrix->reshape([$dim, $dim]), $mo);
+    }
+
+    public function dimension(): int
+    {
+        return $this->matrix->shape()[0];
+    }
+
+    /** @return NDArray complex128, shape [dim, dim] */
+    public function matrix(): NDArray
+    {
+        return $this->matrix;
     }
 
     /** @return array<object{real:float,imag:float}> Row-major complex numbers. */
     public function parameters(): array
     {
-        return $this->matrix;
+        $dim = $this->dimension();
+        $flat = $this->matrix->reshape([$dim * $dim]);
+        $out = [];
+        for ($i = 0; $i < $dim * $dim; $i++) {
+            $c = $flat[$i];
+            $out[] = (object)['real' => (float)$c->real, 'imag' => (float)$c->imag];
+        }
+        return $out;
     }
 
-    private static function fromComplex(array $values): self
+    private function normalizeMatrix(array|NDArray $matrix): NDArray
     {
-        $dim = (int)sqrt(count($values));
-        $gate = new self(array_fill(0, $dim, array_fill(0, $dim, 0.0)));
-        $gate->matrix = $values;
-        return $gate;
-    }
+        if ($matrix instanceof NDArray) {
+            $shape = $matrix->shape();
+            if (count($shape) !== 2 || $shape[0] !== $shape[1]) {
+                throw new InvalidArgumentException('unitary() requires an NxN matrix (N=2^k).');
+            }
+            $this->checkDimension($shape[0]);
+            if ($matrix->dtype() !== NDArray::complex128) {
+                return $this->mo->astype($matrix, NDArray::complex128);
+            }
+            return $matrix;
+        }
 
-    private static function matrixToComplexPairs(array $matrix): array
-    {
         $rows = array_values($matrix);
         $dim = count($rows);
-        if ($dim < 2 || ($dim & ($dim - 1)) !== 0) {
-            throw new InvalidArgumentException('unitary() requires an NxN matrix (N=2^k).');
-        }
-        $out = [];
+        $this->checkDimension($dim);
+        $flat = $this->mo->zeros([$dim * $dim], NDArray::complex128);
+        $idx = 0;
         foreach ($rows as $row) {
             if (!is_array($row) || count($row) !== $dim) {
                 throw new InvalidArgumentException('unitary() requires an NxN matrix (N=2^k).');
             }
             foreach ($row as $value) {
-                $out[] = self::toComplex($value);
+                $flat[$idx++] = self::toComplex($value);
             }
         }
-        return $out;
+        return $flat->reshape([$dim, $dim]);
     }
 
-    private static function toComplex(mixed $value): object
+    private function checkDimension(int $dim): void
+    {
+        if ($dim < 2 || ($dim & ($dim - 1)) !== 0) {
+            throw new InvalidArgumentException('unitary() requires an NxN matrix (N=2^k).');
+        }
+    }
+
+    private static function toComplex(mixed $value): Complex
     {
         if (is_object($value)) {
             if (method_exists($value, 'getReal')) {
-                return (object)[
-                    'real' => (float)$value->getReal(),
-                    'imag' => (float)$value->getImag(),
-                ];
+                return C((float)$value->getReal(), (float)$value->getImag());
             }
             if (property_exists($value, 'real') || isset($value->real)) {
-                return (object)[
-                    'real' => (float)$value->real,
-                    'imag' => (float)($value->imag ?? 0.0),
-                ];
+                return C((float)$value->real, (float)($value->imag ?? 0.0));
             }
             throw new InvalidArgumentException(
                 'unitary() elements must be real numbers or complex objects with real/imag.'
@@ -120,16 +148,15 @@ class UnitaryGate implements CircuitGate
         }
         if (is_array($value)) {
             if (array_key_exists('real', $value) || array_key_exists('imag', $value)) {
-                return (object)[
-                    'real' => (float)($value['real'] ?? 0.0),
-                    'imag' => (float)($value['imag'] ?? 0.0),
-                ];
+                return C(
+                    (float)($value['real'] ?? 0.0),
+                    (float)($value['imag'] ?? 0.0),
+                );
             }
             throw new InvalidArgumentException(
                 'unitary() does not accept plain [re, im] pairs; use real/imag.'
             );
         }
-        return (object)['real' => (float)$value, 'imag' => 0.0];
+        return C((float)$value, 0.0);
     }
-
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Rindow\Qubit;
 
 use InvalidArgumentException;
+use Interop\Polite\Math\Matrix\NDArray;
 use Rindow\Qubit\Circuit\UnitaryGate;
 
 /**
@@ -27,7 +28,7 @@ class QuantumCircuit
 
     private int $numQubits;
     private int $numClbits;
-    /** @var array<int,array{name:string,qubits:array<int>,params:array<mixed>,clbits:array<int>}> */
+    /** @var array<int,array{name:string,qubits:array<int>,params:array<mixed>|NDArray,clbits:array<int>}> */
     private array $operations = [];
     /** @var array<int,int> qubit => clbit の測定マップ */
     private array $measureMap = [];
@@ -66,7 +67,7 @@ class QuantumCircuit
         return $this->numClbits;
     }
 
-    /** @return array<int,array{name:string,qubits:array<int>,params:array<mixed>,clbits:array<int>}> */
+    /** @return array<int,array{name:string,qubits:array<int>,params:array<mixed>|NDArray,clbits:array<int>}> */
     public function operations(): array
     {
         return $this->operations;
@@ -92,12 +93,12 @@ class QuantumCircuit
         }
     }
 
-    public function append(string|CircuitGate $gate, array $qubits, array $params = [], array $clbits = []): static
+    public function append(string|CircuitGate $gate, array $qubits, array|NDArray $params = [], array $clbits = []): static
     {
         if ($gate instanceof UnitaryGate) {
-            $params = $gate->parameters();
+            $params = $gate->matrix();
             $name = UnitaryGate::NAME;
-            $dim = (int)sqrt(count($params));
+            $dim = $gate->dimension();
             $expected = (int)round(log($dim, 2));
             if (count($qubits) !== $expected) {
                 throw new InvalidArgumentException("unitary() requires {$expected} qubits for a {$dim}x{$dim} matrix.");
@@ -116,7 +117,7 @@ class QuantumCircuit
         $this->operations[] = [
             'name' => strtolower($name),
             'qubits' => array_values($qubits),
-            'params' => array_values($params),
+            'params' => $params instanceof NDArray ? $params : array_values($params),
             'clbits' => array_values($clbits),
         ];
         return $this;
@@ -290,16 +291,17 @@ class QuantumCircuit
 
     /**
      * 任意のqubitユニタリ行列を適用する.
-     * 各要素は float(実数) または real/imag を持つ複素数オブジェクト
+     * 配列の場合、各要素は float(実数) または real/imag を持つ複素数オブジェクト
      * (['real'=>..,'imag'=>..] / Complex など). 単なる [re, im] ペアは不可.
+     * NDArray (shape [N,N]) を直接渡すこともできる.
      * 2x2 の場合は各qubitに適用する. Nqubit (4x4以上) の場合は
      * qiskit互換で qubits[0] を最小位 (LSB) として1回適用する.
      */
-    public function unitary(array $matrix, int|array|\Traversable $qubit): static
+    public function unitary(array|NDArray $matrix, int|array|\Traversable $qubit): static
     {
         $qlist = array_map('intval', self::normalizeQubitList($qubit));
         $gate = new UnitaryGate($matrix);
-        if ((int)sqrt(count($gate->parameters())) === 2) {
+        if ($gate->dimension() === 2) {
             foreach ($qlist as $q) {
                 $this->append($gate, [$q]);
             }

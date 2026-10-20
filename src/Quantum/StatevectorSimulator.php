@@ -8,6 +8,7 @@ use Interop\Polite\Math\Matrix\NDArray;
 use Rindow\Math\Matrix\MatrixOperator;
 use Rindow\Qubit\QuantumCircuit;
 use Rindow\Qubit\Math\IntMath;
+use Rindow\Qubit\Math\MatrixOperatorProvider;
 use function Rindow\Math\Matrix\C;
 
 /**
@@ -35,20 +36,14 @@ class StatevectorSimulator
     private object $la;
     private NDArray $state;
 
-    /** @var ?MatrixOperator サービス選択コスト回避のための共有インスタンス */
-    private static ?MatrixOperator $sharedMo = null;
-
     public static function setSharedMatrixOperator(?MatrixOperator $mo): void
     {
-        self::$sharedMo = $mo;
+        MatrixOperatorProvider::set($mo);
     }
 
     public static function sharedMatrixOperator(): MatrixOperator
     {
-        if (self::$sharedMo === null) {
-            self::$sharedMo = new MatrixOperator();
-        }
-        return self::$sharedMo;
+        return MatrixOperatorProvider::get();
     }
 
     public function __construct(int $numQubits, ?MatrixOperator $mo = null)
@@ -95,8 +90,8 @@ class StatevectorSimulator
         }
     }
 
-    /** @param array<int> $qubits @param array<mixed> $params */
-    public function applyOperation(string $name, array $qubits, array $params = []): void
+    /** @param array<int> $qubits @param array<mixed>|NDArray $params */
+    public function applyOperation(string $name, array $qubits, array|NDArray $params = []): void
     {
         switch (strtolower($name)) {
             case 'h':
@@ -148,26 +143,19 @@ class StatevectorSimulator
                 $this->applyU((float)$params[0], (float)$params[1], (float)$params[2], $qubits[0]);
                 break;
             case 'unitary':
-                // paramsは行優先の real/imag を持つ複素数オブジェクト
-                $dim = (int)sqrt(count($params));
-                $mat = [];
-                $idx = 0;
-                for ($i = 0; $i < $dim; $i++) {
-                    $row = [];
-                    for ($j = 0; $j < $dim; $j++) {
-                        $c = $params[$idx];
-                        $row[] = C((float)$c->real, (float)$c->imag);
-                        $idx++;
-                    }
-                    $mat[] = $row;
-                }
-                if ($dim === 2) {
-                    $this->applySingle($qubits[0], $mat);
+                // 通常は UnitaryGate が保持する NDArray がそのまま渡される。
+                // 直接呼び出し互換のため、旧形式の複素オブジェクト配列も受け付ける。
+                $mat = $params instanceof NDArray
+                    ? $params
+                    : $this->unitaryParamsToMatrix($params);
+                $U = $this->gateMatrixNDArray($mat);
+                if ($U->shape()[0] === 2) {
+                    $this->applySingle($qubits[0], $U);
                     break;
                 }
                 // Nqubitユニタリ: qiskit順(LSB first)をMSB firstに直して
                 // applyNQubit に渡す
-                $this->applyNQubit(array_reverse($qubits), $mat);
+                $this->applyNQubit(array_reverse($qubits), $U);
                 break;
             case 'cx':
             case 'cnot':
@@ -191,24 +179,59 @@ class StatevectorSimulator
         }
     }
 
+    /** @param array<array<float|object>> $params 旧形式 (行優先) */
+    private function unitaryParamsToMatrix(array $params): array
+    {
+        $dim = (int)sqrt(count($params));
+        if ($dim * $dim !== count($params)) {
+            throw new InvalidArgumentException('unitary() params size mismatch.');
+        }
+        $mat = [];
+        $idx = 0;
+        for ($i = 0; $i < $dim; $i++) {
+            $row = [];
+            for ($j = 0; $j < $dim; $j++) {
+                $c = $params[$idx];
+                $row[] = C((float)$c->real, (float)$c->imag);
+                $idx++;
+            }
+            $mat[] = $row;
+        }
+        return $mat;
+    }
+
+    private function gateMatrixNDArray(array|NDArray $matrix): NDArray
+    {
+        $U = $matrix instanceof NDArray
+            ? $matrix
+            : $this->mo->array($matrix, dtype: NDArray::complex128);
+        $shape = $U->shape();
+        if (count($shape) !== 2 || $shape[0] !== $shape[1]) {
+            throw new InvalidArgumentException('Gate matrix must be a square 2D matrix.');
+        }
+        if ($U->dtype() !== NDArray::complex128) {
+            $U = $this->mo->astype($U, NDArray::complex128);
+        }
+        return $U;
+    }
+
     /**
      * 1qubitゲート U=[[a,b],[c,d]] を適用 (各要素は実数またはComplex).
-     * @param array<array<float|object>> $matrix 2x2 (row-major)
+     * @param array<array<float|object>>|NDArray $matrix 2x2 (row-major)
      */
-    public function applySingle(int $qubit, array $matrix): void
+    public function applySingle(int $qubit, array|NDArray $matrix): void
     {
         if ($qubit < 0 || $qubit >= $this->numQubits) {
             throw new InvalidArgumentException("Qubit index out of range: {$qubit}");
         }
-        if (count($matrix) !== 2 || count((array)$matrix[0]) !== 2 || count((array)$matrix[1]) !== 2) {
+        $U = $this->gateMatrixNDArray($matrix);
+        if ($U->shape() !== [2, 2]) {
             throw new InvalidArgumentException('applySingle() requires a 2x2 matrix.');
         }
         $la = $this->la;
-        $mo = $this->mo;
         $L = 1 << $qubit;
         $H = $this->dim >> ($qubit + 1);
         $M = $H * $L;
-        $U = $mo->array($matrix, dtype: NDArray::complex128);
 
         // [H,2,L] view -> transpose -> [H,L,2] -> [M,2]
         $flat = $la->transpose($this->state->reshape([$H, 2, $L]), perm: [0, 2, 1])
@@ -353,22 +376,18 @@ class StatevectorSimulator
      * 基底順は $qubitsMsbFirst の先頭が最上位ビット (例: [qb,qa] で idx=qb*2+qa)。
      * 状態を行ベクトルと見て Y = X @ U^T で単一gemm実行する。
      * @param array<int> $qubitsMsbFirst 先頭がMSB (重複なし)
-     * @param array<array<float|object>> $matrix 2^k x 2^k (row-major。各要素は実数またはComplex)
+     * @param array<array<float|object>>|NDArray $matrix 2^k x 2^k (row-major。各要素は実数またはComplex)
      */
-    public function applyNQubit(array $qubitsMsbFirst, array $matrix): void
+    public function applyNQubit(array $qubitsMsbFirst, array|NDArray $matrix): void
     {
         $k = count($qubitsMsbFirst);
         if ($k < 1) {
             throw new InvalidArgumentException('applyNQubit() requires at least 1 qubit.');
         }
         $dim = 1 << $k;
-        if (count($matrix) !== $dim) {
+        $U = $this->gateMatrixNDArray($matrix);
+        if ($U->shape() !== [$dim, $dim]) {
             throw new InvalidArgumentException('applyNQubit() matrix size mismatch.');
-        }
-        foreach ($matrix as $row) {
-            if (count((array)$row) !== $dim) {
-                throw new InvalidArgumentException('applyNQubit() matrix size mismatch.');
-            }
         }
         $seen = [];
         foreach ($qubitsMsbFirst as $q) {
@@ -378,7 +397,6 @@ class StatevectorSimulator
             $seen[$q] = true;
         }
         $la = $this->la;
-        $mo = $this->mo;
         $n = $this->numQubits;
         // 状態を [2]*n テンソルと見る. axis a (左から0始まり) <-> qubit n-1-a.
         $toAxis = static fn(int $q): int => $n - 1 - $q;
@@ -399,7 +417,6 @@ class StatevectorSimulator
         $rest = 1 << ($n - $k);
         $flat = $la->transpose($this->state->reshape($shape), perm: $perm)
             ->reshape([$rest, $dim]);
-        $U = $mo->array($matrix, dtype: NDArray::complex128);
         // Y = X @ U^T (transB=共役なし転置。conj省略時は共役転置になるので明示)
         $out = $la->gemm($flat, $U, transB: true, conjB: false);
         // 逆置換で元に戻す
