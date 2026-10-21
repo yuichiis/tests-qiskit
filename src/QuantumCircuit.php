@@ -5,11 +5,28 @@ namespace Rindow\Qubit;
 
 use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
+use Rindow\Qubit\Circuit\CPhaseGate;
+use Rindow\Qubit\Circuit\CXGate;
+use Rindow\Qubit\Circuit\CZGate;
 use Rindow\Qubit\Circuit\HGate;
+use Rindow\Qubit\Circuit\IGate;
 use Rindow\Qubit\Circuit\MCPhaseGate;
 use Rindow\Qubit\Circuit\MCXGate;
+use Rindow\Qubit\Circuit\PhaseGate;
 use Rindow\Qubit\Circuit\QFTGate;
+use Rindow\Qubit\Circuit\RXGate;
+use Rindow\Qubit\Circuit\RYGate;
+use Rindow\Qubit\Circuit\RZGate;
+use Rindow\Qubit\Circuit\SdgGate;
+use Rindow\Qubit\Circuit\SGate;
+use Rindow\Qubit\Circuit\SwapGate;
+use Rindow\Qubit\Circuit\TdgGate;
+use Rindow\Qubit\Circuit\TGate;
+use Rindow\Qubit\Circuit\UGate;
 use Rindow\Qubit\Circuit\UnitaryGate;
+use Rindow\Qubit\Circuit\XGate;
+use Rindow\Qubit\Circuit\YGate;
+use Rindow\Qubit\Circuit\ZGate;
 
 /**
  * Qiskit互換の量子回路クラス (PHP版 qiskit::QuantumCircuit)
@@ -101,13 +118,7 @@ class QuantumCircuit
 
     public function append(string|CircuitGate $gate, array $qubits, array|NDArray $params = [], array $clbits = []): static
     {
-        if (
-            $gate instanceof UnitaryGate
-            || $gate instanceof HGate
-            || $gate instanceof QFTGate
-            || $gate instanceof MCXGate
-            || $gate instanceof MCPhaseGate
-        ) {
+        if ($gate instanceof CircuitGate) {
             $params = $gate->matrix();
             $name = $gate->name();
             $dim = $gate->dimension();
@@ -115,8 +126,6 @@ class QuantumCircuit
             if (count($qubits) !== $expected) {
                 throw new InvalidArgumentException("{$name}() requires {$expected} qubits for a {$dim}x{$dim} matrix.");
             }
-        } elseif ($gate instanceof CircuitGate) {
-            throw new InvalidArgumentException('Unsupported circuit gate object.');
         } else {
             $name = $gate;
         }
@@ -153,88 +162,99 @@ class QuantumCircuit
 
     public function x(int|array|\Traversable $qubit): static
     {
+        $gate = new XGate();
         foreach (self::normalizeQubitList($qubit) as $q) {
-            $this->append('x', [(int)$q]);
+            $this->append($gate, [(int)$q]);
         }
         return $this;
     }
 
     public function y(int|array|\Traversable $qubit): static
     {
+        $gate = new YGate();
         foreach (self::normalizeQubitList($qubit) as $q) {
-            $this->append('y', [(int)$q]);
+            $this->append($gate, [(int)$q]);
         }
         return $this;
     }
 
     public function z(int|array|\Traversable $qubit): static
     {
+        $gate = new ZGate();
         foreach (self::normalizeQubitList($qubit) as $q) {
-            $this->append('z', [(int)$q]);
+            $this->append($gate, [(int)$q]);
         }
         return $this;
     }
 
     public function s(int|array|\Traversable $qubit): static
     {
+        $gate = new SGate();
         foreach (self::normalizeQubitList($qubit) as $q) {
-            $this->append('s', [(int)$q]);
+            $this->append($gate, [(int)$q]);
         }
         return $this;
     }
 
     public function sdg(int|array|\Traversable $qubit): static
     {
+        $gate = new SdgGate();
         foreach (self::normalizeQubitList($qubit) as $q) {
-            $this->append('sdg', [(int)$q]);
+            $this->append($gate, [(int)$q]);
         }
         return $this;
     }
 
     public function t(int|array|\Traversable $qubit): static
     {
+        $gate = new TGate();
         foreach (self::normalizeQubitList($qubit) as $q) {
-            $this->append('t', [(int)$q]);
+            $this->append($gate, [(int)$q]);
         }
         return $this;
     }
 
     public function tdg(int|array|\Traversable $qubit): static
     {
+        $gate = new TdgGate();
         foreach (self::normalizeQubitList($qubit) as $q) {
-            $this->append('tdg', [(int)$q]);
+            $this->append($gate, [(int)$q]);
         }
         return $this;
     }
 
     public function id(int|array|\Traversable $qubit): static
     {
+        $gate = new IGate();
         foreach (self::normalizeQubitList($qubit) as $q) {
-            $this->append('id', [(int)$q]);
+            $this->append($gate, [(int)$q]);
         }
         return $this;
     }
 
     public function rx(float $theta, int|array|\Traversable $qubit): static
     {
+        $gate = new RXGate($theta);
         foreach (self::normalizeQubitList($qubit) as $q) {
-            $this->append('rx', [(int)$q], [$theta]);
+            $this->append($gate, [(int)$q]);
         }
         return $this;
     }
 
     public function ry(float $theta, int|array|\Traversable $qubit): static
     {
+        $gate = new RYGate($theta);
         foreach (self::normalizeQubitList($qubit) as $q) {
-            $this->append('ry', [(int)$q], [$theta]);
+            $this->append($gate, [(int)$q]);
         }
         return $this;
     }
 
     public function rz(float $theta, int|array|\Traversable $qubit): static
     {
+        $gate = new RZGate($theta);
         foreach (self::normalizeQubitList($qubit) as $q) {
-            $this->append('rz', [(int)$q], [$theta]);
+            $this->append($gate, [(int)$q]);
         }
         return $this;
     }
@@ -242,16 +262,18 @@ class QuantumCircuit
     /** Phase gate P(λ) == U1(λ) */
     public function p(float $lambda, int|array|\Traversable $qubit): static
     {
+        $gate = new PhaseGate($lambda);
         foreach (self::normalizeQubitList($qubit) as $q) {
-            $this->append('p', [(int)$q], [$lambda]);
+            $this->append($gate, [(int)$q]);
         }
         return $this;
     }
 
     public function u(float $theta, float $phi, float $lambda, int|array|\Traversable $qubit): static
     {
+        $gate = new UGate($theta, $phi, $lambda);
         foreach (self::normalizeQubitList($qubit) as $q) {
-            $this->append('u', [(int)$q], [$theta, $phi, $lambda]);
+            $this->append($gate, [(int)$q]);
         }
         return $this;
     }
@@ -260,11 +282,12 @@ class QuantumCircuit
 
     public function cx(int|array|\Traversable $control, int|array|\Traversable $target): static
     {
+        $gate = new CXGate();
         foreach (self::expandTwoQubitArgs($control, $target) as [$c, $t]) {
             if ($c === $t) {
                 throw new InvalidArgumentException('Control and target must differ.');
             }
-            $this->append('cx', [$c, $t]);
+            $this->append($gate, [$c, $t]);
         }
         return $this;
     }
@@ -277,11 +300,12 @@ class QuantumCircuit
 
     public function cz(int|array|\Traversable $control, int|array|\Traversable $target): static
     {
+        $gate = new CZGate();
         foreach (self::expandTwoQubitArgs($control, $target) as [$c, $t]) {
             if ($c === $t) {
                 throw new InvalidArgumentException('Control and target must differ.');
             }
-            $this->append('cz', [$c, $t]);
+            $this->append($gate, [$c, $t]);
         }
         return $this;
     }
@@ -289,22 +313,24 @@ class QuantumCircuit
     /** Controlled-phase gate CP(θ) = diag(1,1,1,e^{iθ}) */
     public function cp(float $theta, int|array|\Traversable $control, int|array|\Traversable $target): static
     {
+        $gate = new CPhaseGate($theta);
         foreach (self::expandTwoQubitArgs($control, $target) as [$c, $t]) {
             if ($c === $t) {
                 throw new InvalidArgumentException('Control and target must differ.');
             }
-            $this->append('cp', [$c, $t], [$theta]);
+            $this->append($gate, [$c, $t]);
         }
         return $this;
     }
 
     public function swap(int|array|\Traversable $qubit1, int|array|\Traversable $qubit2): static
     {
+        $gate = new SwapGate();
         foreach (self::expandTwoQubitArgs($qubit1, $qubit2) as [$a, $b]) {
             if ($a === $b) {
                 throw new InvalidArgumentException('Swap qubits must differ.');
             }
-            $this->append('swap', [$a, $b]);
+            $this->append($gate, [$a, $b]);
         }
         return $this;
     }

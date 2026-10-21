@@ -6,7 +6,25 @@ namespace Rindow\Qubit\Quantum;
 use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
 use Rindow\Math\Matrix\MatrixOperator;
+use Rindow\Qubit\Circuit\CPhaseGate;
+use Rindow\Qubit\Circuit\CXGate;
+use Rindow\Qubit\Circuit\CZGate;
 use Rindow\Qubit\Circuit\HGate;
+use Rindow\Qubit\Circuit\IGate;
+use Rindow\Qubit\Circuit\PhaseGate;
+use Rindow\Qubit\Circuit\RXGate;
+use Rindow\Qubit\Circuit\RYGate;
+use Rindow\Qubit\Circuit\RZGate;
+use Rindow\Qubit\Circuit\SdgGate;
+use Rindow\Qubit\Circuit\SGate;
+use Rindow\Qubit\Circuit\SwapGate;
+use Rindow\Qubit\Circuit\TdgGate;
+use Rindow\Qubit\Circuit\TGate;
+use Rindow\Qubit\Circuit\UGate;
+use Rindow\Qubit\Circuit\XGate;
+use Rindow\Qubit\Circuit\YGate;
+use Rindow\Qubit\Circuit\ZGate;
+use Rindow\Qubit\CircuitGate;
 use Rindow\Qubit\QuantumCircuit;
 use Rindow\Qubit\Math\IntMath;
 use Rindow\Qubit\Math\MatrixOperatorProvider;
@@ -94,86 +112,29 @@ class StatevectorSimulator
     /** @param array<int> $qubits @param array<mixed>|NDArray $params */
     public function applyOperation(string $name, array $qubits, array|NDArray $params = []): void
     {
-        switch (strtolower($name)) {
-            case 'h':
-                $this->applySingle($qubits[0], (new HGate($this->mo))->matrix());
-                break;
-            case 'x':
-                $this->applySingle($qubits[0], [[0, 1], [1, 0]]);
-                break;
-            case 'y':
-                // [[0,-i],[i,0]]
-                $this->applySingle($qubits[0], [[0, C(0, -1)], [C(0, 1), 0]]);
-                break;
-            case 'z':
-                $this->applySingle($qubits[0], [[1, 0], [0, -1]]);
-                break;
-            case 's':
-                $this->applySingle($qubits[0], [[1, 0], [0, C(0, 1)]]);
-                break;
-            case 'sdg':
-            case 's_dg':
-                $this->applySingle($qubits[0], [[1, 0], [0, C(0, -1)]]);
-                break;
-            case 't':
-                $s = 1.0 / sqrt(2.0);
-                $this->applySingle($qubits[0], [[1, 0], [0, C($s, $s)]]);
-                break;
-            case 'tdg':
-            case 't_dg':
-                $s = 1.0 / sqrt(2.0);
-                $this->applySingle($qubits[0], [[1, 0], [0, C($s, -$s)]]);
-                break;
-            case 'id':
-            case 'i':
-                break;
-            case 'rx':
-                $this->applyRx($qubits[0], (float)$params[0]);
-                break;
-            case 'ry':
-                $this->applyRy($qubits[0], (float)$params[0]);
-                break;
-            case 'rz':
-                $this->applyRz($qubits[0], (float)$params[0]);
-                break;
-            case 'p':
-                $this->applyPhase((float)$params[0], $qubits[0]);
-                break;
-            case 'u':
-                $this->applyU((float)$params[0], (float)$params[1], (float)$params[2], $qubits[0]);
-                break;
+        $name = strtolower($name);
+        if ($params instanceof NDArray) {
+            if (in_array($name, ['measure', 'barrier', 'reset'], true)) {
+                return;
+            }
+            $this->applyMatrix($qubits, $params);
+            return;
+        }
+        $gate = $this->standardGate($name, $params);
+        if ($gate !== null) {
+            $this->applyMatrix($qubits, $gate->matrix());
+            return;
+        }
+        switch ($name) {
             case 'unitary':
             case 'qft':
             case 'qft_dg':
             case 'mcx':
             case 'mcphase':
-                // 通常は UnitaryGate / QFTGate / MCXGate / MCPhaseGate が保持する
-                // NDArray がそのまま渡される。
-                // 直接呼び出し互換のため、旧形式の複素オブジェクト配列も受け付ける。
-                $mat = $params instanceof NDArray
-                    ? $params
-                    : $this->unitaryParamsToMatrix($params);
-                $U = $this->gateMatrixNDArray($mat);
-                if ($U->shape()[0] === 2) {
-                    $this->applySingle($qubits[0], $U);
-                    break;
-                }
-                // Nqubitユニタリ: qiskit順(LSB first)をMSB firstに直して
-                // applyNQubit に渡す
-                $this->applyNQubit(array_reverse($qubits), $U);
-                break;
-            case 'cx':
-            case 'cnot':
-                $this->applyCx($qubits[0], $qubits[1]);
-                break;
-            case 'cz':
-                $this->applyCz($qubits[0], $qubits[1]);
-                break;
-            case 'cp':
-                $this->applyCp((float)$params[0], $qubits[0], $qubits[1]);
-                break;
-            case 'swap':
-                $this->applySwap($qubits[0], $qubits[1]);
+                // 直接呼び出し互換のため、旧形式の複素オブジェクト配列を受け付ける。
+                $this->applyMatrix($qubits, $this->gateMatrixNDArray(
+                    $this->unitaryParamsToMatrix($params)
+                ));
                 break;
             case 'measure':
             case 'barrier':
@@ -182,6 +143,53 @@ class StatevectorSimulator
             default:
                 throw new InvalidArgumentException("Unknown gate: {$name}");
         }
+    }
+
+    /**
+     * @param array<int> $qubits Qiskit order (first argument = LSB).
+     * @param array<mixed> $params
+     */
+    private function standardGate(string $name, array $params): ?CircuitGate
+    {
+        return match ($name) {
+            'h' => new HGate($this->mo),
+            'x' => new XGate($this->mo),
+            'y' => new YGate($this->mo),
+            'z' => new ZGate($this->mo),
+            's' => new SGate($this->mo),
+            'sdg', 's_dg' => new SdgGate($this->mo),
+            't' => new TGate($this->mo),
+            'tdg', 't_dg' => new TdgGate($this->mo),
+            'id', 'i' => new IGate($this->mo),
+            'rx' => new RXGate((float)$params[0], $this->mo),
+            'ry' => new RYGate((float)$params[0], $this->mo),
+            'rz' => new RZGate((float)$params[0], $this->mo),
+            'p' => new PhaseGate((float)$params[0], $this->mo),
+            'u' => new UGate((float)$params[0], (float)$params[1], (float)$params[2], $this->mo),
+            'cx', 'cnot' => new CXGate($this->mo),
+            'cz' => new CZGate($this->mo),
+            'cp' => new CPhaseGate((float)$params[0], $this->mo),
+            'swap' => new SwapGate($this->mo),
+            default => null,
+        };
+    }
+
+    /** @param array<int> $qubits Qiskit order (first argument = LSB). */
+    private function applyMatrix(array $qubits, NDArray $matrix): void
+    {
+        $U = $this->gateMatrixNDArray($matrix);
+        $dim = $U->shape()[0];
+        $expected = 1 << count($qubits);
+        if ($dim !== $expected) {
+            throw new InvalidArgumentException(
+                "Gate matrix is {$dim}x{$dim} but " . count($qubits) . ' qubit(s) were given.'
+            );
+        }
+        if ($dim === 2) {
+            $this->applySingle($qubits[0], $U);
+            return;
+        }
+        $this->applyNQubit(array_reverse($qubits), $U);
     }
 
     /** @param array<array<float|object>> $params 旧形式 (行優先) */

@@ -1,0 +1,28 @@
+<?php
+declare(strict_types=1);
+
+namespace Rindow\Qubit\Circuit;
+
+use Interop\Polite\Math\Matrix\NDArray;
+use function Rindow\Math\Matrix\C;
+
+class TdgGate extends SingleQubitGate
+{
+    public const NAME = 'tdg';
+
+    public function name(): string
+    {
+        return self::NAME;
+    }
+
+    public function inverse(): TGate
+    {
+        return new TGate($this->mo);
+    }
+
+    protected function buildMatrix(): NDArray
+    {
+        $s = 1.0 / sqrt(2.0);
+        return $this->mo->array([[1, 0], [0, C($s, -$s)]], dtype: NDArray::complex128);
+    }
+}
