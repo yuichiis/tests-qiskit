@@ -18,7 +18,7 @@ echo $qc->draw();
 
 $sim = new StatevectorSampler();
 $result = $sim->run([$qc], shots: 1024)->result();
-$state = $result[0]->data->statevector->getStatevector();
+$state = $result->getStatevector();
 foreach ($state as $i => $amp) {
     printf("%s: %.4f%+.4fi\n", IntMath::int2bit($i, 2), $amp->real, $amp->imag);
 }

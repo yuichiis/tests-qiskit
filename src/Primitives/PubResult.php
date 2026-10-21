@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace Rindow\Qubit\Primitives;
 
+use Rindow\Qubit\QuantumInfo\Statevector;
+
 /**
  * 1回路分(PUB)の実行結果. qiskitの `result[0].data.meas` に対応.
  */
@@ -12,13 +14,12 @@ class PubResult
 
     /**
      * @param array<string,int> $counts
-     * @param array<int,object{real:float,imag:float}> $statevector
      */
-    public function __construct(array $counts, int $numShots, array $statevector = [])
+    public function __construct(array $counts, int $numShots, Statevector $statevector)
     {
         $this->data = new PubData(
             new MeasData($counts, $numShots),
-            new StatevectorData($statevector)
+            $statevector
         );
     }
 }

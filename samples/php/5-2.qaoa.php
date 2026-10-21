@@ -8,11 +8,10 @@ require __DIR__ . '/../../vendor/autoload.php';
 # 調整してカット数の期待値を最大化するハイブリッド算法だよ！
 
 use Rindow\Qubit\QuantumCircuit;
-use Rindow\Qubit\Quantum\StatevectorSimulator;
+use Rindow\Qubit\QuantumInfo\Statevector;
 use Rindow\Qubit\Primitives\StatevectorSampler;
 use Rindow\Qubit\Visualization\Visualization;
 use Rindow\Qubit\Math\NelderMead;
-use Rindow\Qubit\Math\IntMath;
 
 // 4点リング：辺 (0-1, 1-2, 2-3, 3-0)
 $edges = [[0, 1], [1, 2], [2, 3], [3, 0]];
@@ -55,12 +54,10 @@ function neg_expected_cut(array $params, array $edges): float
 {
     // 状態ベクトルからカット数の期待値を正確に求める (最適化用)
     [$gamma, $beta] = $params;
-    $qc = build_qaoa($gamma, $beta, $edges);
-    $sim = new StatevectorSimulator($qc->numQubits());
-    $sim->applyCircuit($qc);
+    $probs = (new Statevector(build_qaoa($gamma, $beta, $edges)))->probabilitiesDict();
     $exp = 0.0;
-    foreach ($sim->probabilities() as $bits => $prob) {
-        $exp += $prob * cut_value($bits, $edges);
+    foreach ($probs as $bits => $prob) {
+        $exp += $prob * cut_value((string)$bits, $edges);
     }
     return -$exp;
 }
@@ -84,16 +81,14 @@ $counts = $result[0]->data->meas->getCounts();
 Visualization::showHistogram($counts);
 
 // 答えの表示：カット数（両端が別グループの辺の数）が最大のビット列を探す
-// (カウントのキーは数値化されることがあるので4桁に正規化する)
-$norm = static fn($bits) => IntMath::int2bit((int)$bits, 4);
 $best = 0;
 foreach ($counts as $bits => $c) {
-    $best = max($best, cut_value($norm($bits), $edges));
+    $best = max($best, cut_value((string)$bits, $edges));
 }
 $winners = [];
 foreach ($counts as $bits => $c) {
-    if (cut_value($norm($bits), $edges) == $best) {
-        $winners[] = $norm($bits);
+    if (cut_value((string)$bits, $edges) == $best) {
+        $winners[] = (string)$bits;
     }
 }
 sort($winners);

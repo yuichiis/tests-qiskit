@@ -6,6 +6,7 @@ namespace Rindow\Qubit\Primitives;
 use InvalidArgumentException;
 use Rindow\Qubit\Quantum\StatevectorSimulator;
 use Rindow\Qubit\QuantumCircuit;
+use Rindow\Qubit\QuantumInfo\Statevector;
 
 /**
  * sampler.run(...)->result() が返す非同期ジョブの簡易版.
@@ -34,7 +35,7 @@ class SamplerJob
             $circuitSeed = $seed === null ? null : $seed + $i;
             $sim = new StatevectorSimulator($circuit->numQubits());
             $sim->applyCircuit($circuit);
-            $statevector = $sim->getStatevector();
+            $statevector = new Statevector($sim);
             $map = $circuit->effectiveMeasureMap();
             $numClbits = $circuit->effectiveNumClbits();
             $counts = $sim->sampleCounts($map, $numClbits, $shots, $circuitSeed);

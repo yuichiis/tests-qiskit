@@ -7,10 +7,12 @@ use ArrayAccess;
 use Countable;
 use IteratorAggregate;
 use OutOfBoundsException;
+use Rindow\Qubit\QuantumInfo\Statevector;
 use Traversable;
 
 /**
- * qiskit の PrimitiveResult に相当. $result[0]->data->meas->getCounts()
+ * qiskit の PrimitiveResult に相当. $result->getStatevector()
+ * または $result[0]->data->meas->getCounts()
  */
 class SamplerResult implements ArrayAccess, Countable, IteratorAggregate
 {
@@ -29,6 +31,11 @@ class SamplerResult implements ArrayAccess, Countable, IteratorAggregate
             throw new OutOfBoundsException("Pub index out of range: {$index}");
         }
         return $this->pubs[$index];
+    }
+
+    public function getStatevector(int $index = 0): Statevector
+    {
+        return $this->get($index)->data->statevector;
     }
 
     // --- ArrayAccess / Countable / IteratorAggregate ---
