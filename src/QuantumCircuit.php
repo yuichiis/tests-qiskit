@@ -5,6 +5,7 @@ namespace Rindow\Qubit;
 
 use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
+use Rindow\Qubit\Circuit\MCXGate;
 use Rindow\Qubit\Circuit\QFTGate;
 use Rindow\Qubit\Circuit\UnitaryGate;
 
@@ -96,9 +97,13 @@ class QuantumCircuit
 
     public function append(string|CircuitGate $gate, array $qubits, array|NDArray $params = [], array $clbits = []): static
     {
-        if ($gate instanceof UnitaryGate || $gate instanceof QFTGate) {
+        if ($gate instanceof UnitaryGate || $gate instanceof QFTGate || $gate instanceof MCXGate) {
             $params = $gate->matrix();
-            $name = $gate instanceof QFTGate ? QFTGate::NAME : UnitaryGate::NAME;
+            $name = match (true) {
+                $gate instanceof QFTGate => QFTGate::NAME,
+                $gate instanceof MCXGate => MCXGate::NAME,
+                default => UnitaryGate::NAME,
+            };
             $dim = $gate->dimension();
             $expected = (int)round(log($dim, 2));
             if (count($qubits) !== $expected) {
@@ -514,6 +519,17 @@ class QuantumCircuit
                 $span = range(min($a, $b), max($a, $b));
                 for ($q = min($a, $b) + 1; $q < max($a, $b); $q++) {
                     $contrib[$q] = '│';
+                }
+            } elseif ($op['name'] === 'mcx') {
+                $last = count($qs) - 1;
+                foreach ($qs as $i => $q) {
+                    $contrib[$q] = $i === $last ? '⊕' : '●';
+                }
+                $span = range(min($qs), max($qs));
+                for ($q = min($qs) + 1; $q < max($qs); $q++) {
+                    if (!array_key_exists($q, $contrib)) {
+                        $contrib[$q] = '│';
+                    }
                 }
             } elseif (($op['name'] === 'unitary' || $op['name'] === 'qft') && count($qs) > 1) {
                 $symbol = $op['name'] === 'qft' ? 'QFT' : 'U';

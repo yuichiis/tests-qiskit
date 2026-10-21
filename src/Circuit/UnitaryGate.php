@@ -14,8 +14,6 @@ use function Rindow\Math\Matrix\C;
 
 class UnitaryGate implements CircuitGate
 {
-    use CircuitUtils;
-
     public const NAME = 'unitary';
 
     /** @var NDArray complex128, shape [dim, dim], row-major. */
