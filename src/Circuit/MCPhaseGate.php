@@ -37,6 +37,11 @@ class MCPhaseGate implements CircuitGate
         $this->matrix = $this->buildMatrix();
     }
 
+    public function name(): string
+    {
+        return self::NAME;
+    }
+
     public function inverse(): self
     {
         return new self(-$this->lambda, $this->numCtrlQubits, $this->ctrlState, $this->mo);

@@ -105,12 +105,7 @@ class QuantumCircuit
             || $gate instanceof MCPhaseGate
         ) {
             $params = $gate->matrix();
-            $name = match (true) {
-                $gate instanceof QFTGate => $gate->name(),
-                $gate instanceof MCXGate => MCXGate::NAME,
-                $gate instanceof MCPhaseGate => MCPhaseGate::NAME,
-                default => UnitaryGate::NAME,
-            };
+            $name = $gate->name();
             $dim = $gate->dimension();
             $expected = (int)round(log($dim, 2));
             if (count($qubits) !== $expected) {

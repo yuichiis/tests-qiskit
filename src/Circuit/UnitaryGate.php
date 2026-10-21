@@ -26,6 +26,11 @@ class UnitaryGate implements CircuitGate
         $this->matrix = $this->normalizeMatrix($matrix);
     }
 
+    public function name(): string
+    {
+        return self::NAME;
+    }
+
     public function control(int $numControls = 1): self
     {
         if ($numControls < 1) {

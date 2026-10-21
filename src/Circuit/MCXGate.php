@@ -34,6 +34,11 @@ class MCXGate implements CircuitGate
         $this->matrix = $this->buildMatrix();
     }
 
+    public function name(): string
+    {
+        return self::NAME;
+    }
+
     public function numCtrlQubits(): int
     {
         return $this->numCtrlQubits;
