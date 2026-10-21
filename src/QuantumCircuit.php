@@ -34,6 +34,8 @@ class QuantumCircuit
     private int $numClbits;
     /** @var array<int,array{name:string,qubits:array<int>,params:array<mixed>|NDArray,clbits:array<int>}> */
     private array $operations = [];
+    /** @var array<int,CircuitGate|null> appendしたゲートオブジェクト (文字列ゲートはnull) */
+    private array $operationGates = [];
     /** @var array<int,int> qubit => clbit の測定マップ */
     private array $measureMap = [];
 
@@ -124,13 +126,20 @@ class QuantumCircuit
         foreach ($clbits as $c) {
             $this->checkClbit($c);
         }
-        $this->operations[] = [
+        $this->recordOperation([
             'name' => strtolower($name),
             'qubits' => array_values($qubits),
             'params' => $params instanceof NDArray ? $params : array_values($params),
             'clbits' => array_values($clbits),
-        ];
+        ], $gate instanceof CircuitGate ? $gate : null);
         return $this;
+    }
+
+    /** @param array{name:string,qubits:array<int>,params:array<mixed>|NDArray,clbits:array<int>} $operation */
+    private function recordOperation(array $operation, ?CircuitGate $gate = null): void
+    {
+        $this->operations[] = $operation;
+        $this->operationGates[] = $gate;
     }
 
     public function h(int|array|\Traversable $qubit): static
@@ -357,12 +366,12 @@ class QuantumCircuit
         for ($q = 0; $q < $this->numQubits; $q++) {
             if (!array_key_exists($q, $this->measureMap)) {
                 $this->measureMap[$q] = $q;
-                $this->operations[] = [
+                $this->recordOperation([
                     'name' => 'measure',
                     'qubits' => [$q],
                     'params' => [],
                     'clbits' => [$q],
-                ];
+                ]);
             }
         }
         return $this;
@@ -390,12 +399,12 @@ class QuantumCircuit
             $this->checkQubit($q);
         }
         // シミュレーション上は no-op として記録のみ
-        $this->operations[] = [
+        $this->recordOperation([
             'name' => 'barrier',
             'qubits' => array_values($flat),
             'params' => [],
             'clbits' => [],
-        ];
+        ]);
         return $this;
     }
 
@@ -467,101 +476,22 @@ class QuantumCircuit
         // これにより h([0,1]) や measure([0,1],[0,1]) が縦に揃って描画される.
         /** @var array<int,array{cells:array<int,string>,used:array<int,bool>,usedClbits:array<int,bool>,barrier:bool}> $columns */
         $columns = [];
-        foreach ($this->operations as $op) {
-            $label = match ($op['name']) {
-                'qft' => 'QFT',
-                'qft_dg' => 'QFT†',
-                default => $op['name'],
-            };
-            if (in_array($op['name'], ['rx', 'ry', 'rz', 'p'], true)) {
-                $label .= sprintf('(%.3g)', $op['params'][0]);
-            } elseif ($op['name'] === 'u') {
-                $label .= sprintf('(%.3g,%.3g,%.3g)', $op['params'][0], $op['params'][1], $op['params'][2]);
-            }
-            $qs = $op['qubits'];
-            // この操作が使うセルと占有範囲を求める
-            $contrib = []; // qubit => symbol
-            $span = [];    // 占有するqubit範囲(2qubit間の│含む)
-            $clbits = [];
-            if ($op['name'] === 'measure') {
-                $contrib[$qs[0]] = "M(c{$op['clbits'][0]})";
-                $span = [$qs[0]];
-                $clbits = [$op['clbits'][0]];
-            } elseif ($op['name'] === 'barrier') {
-                foreach ($qs as $q) {
-                    $contrib[$q] = '‖';
-                }
-                $span = array_values($qs);
-            } elseif (count($qs) === 1) {
-                $contrib[$qs[0]] = $label;
-                $span = [$qs[0]];
-            } elseif ($op['name'] === 'cx' || $op['name'] === 'cnot') {
-                [$c, $t] = $qs;
-                $contrib[$c] = '●';
-                $contrib[$t] = '⊕';
-                $span = range(min($c, $t), max($c, $t));
-                for ($q = min($c, $t) + 1; $q < max($c, $t); $q++) {
-                    $contrib[$q] = '│';
-                }
-            } elseif ($op['name'] === 'cz') {
-                foreach ($qs as $q) {
-                    $contrib[$q] = '●';
-                }
-                [$a, $b] = $qs;
-                $span = range(min($a, $b), max($a, $b));
-                for ($q = min($a, $b) + 1; $q < max($a, $b); $q++) {
-                    $contrib[$q] = '│';
-                }
-            } elseif ($op['name'] === 'cp') {
-                [$c, $t] = $qs;
-                $contrib[$c] = '●';
-                $contrib[$t] = sprintf('cp(%.3g)', $op['params'][0]);
-                $span = range(min($c, $t), max($c, $t));
-                for ($q = min($c, $t) + 1; $q < max($c, $t); $q++) {
-                    $contrib[$q] = '│';
-                }
-            } elseif ($op['name'] === 'swap') {
-                foreach ($qs as $q) {
-                    $contrib[$q] = '×';
-                }
-                [$a, $b] = $qs;
-                $span = range(min($a, $b), max($a, $b));
-                for ($q = min($a, $b) + 1; $q < max($a, $b); $q++) {
-                    $contrib[$q] = '│';
-                }
-            } elseif ($op['name'] === 'mcx' || $op['name'] === 'mcphase') {
-                $last = count($qs) - 1;
-                $symbol = $op['name'] === 'mcx' ? '⊕' : 'P';
-                foreach ($qs as $i => $q) {
-                    $contrib[$q] = $i === $last ? $symbol : '●';
-                }
-                $span = range(min($qs), max($qs));
-                for ($q = min($qs) + 1; $q < max($qs); $q++) {
-                    if (!array_key_exists($q, $contrib)) {
-                        $contrib[$q] = '│';
-                    }
-                }
-            } elseif (in_array($op['name'], ['unitary', 'qft', 'qft_dg'], true) && count($qs) > 1) {
-                $symbol = match ($op['name']) {
-                    'qft' => 'QFT',
-                    'qft_dg' => 'QFT†',
-                    default => 'U',
-                };
-                foreach ($qs as $q) {
-                    $contrib[$q] = $symbol;
-                }
-                $span = range(min($qs), max($qs));
-                for ($q = min($qs) + 1; $q < max($qs); $q++) {
-                    $contrib[$q] = '│';
-                }
+        foreach ($this->operations as $i => $op) {
+            $gate = $this->operationGates[$i] ?? null;
+            if ($gate !== null) {
+                $visual = $gate->draw($op['qubits']);
+                $contrib = $visual['cells'];
+                $span = $visual['span'];
+                $clbits = [];
+                $isBarrier = false;
             } else {
-                foreach ($qs as $q) {
-                    $contrib[$q] = $label;
-                }
-                $span = array_values($qs);
+                $visual = $this->drawBuiltinOperation($op);
+                $contrib = $visual['cells'];
+                $span = $visual['span'];
+                $clbits = $visual['clbits'];
+                $isBarrier = $visual['barrier'];
             }
 
-            $isBarrier = ($op['name'] === 'barrier');
             $merged = false;
             if (!$isBarrier && !empty($columns)) {
                 $lastIdx = count($columns) - 1;
@@ -635,6 +565,83 @@ class QuantumCircuit
             }
         }
         return implode("\n", $lines) . "\n";
+    }
+
+    /**
+     * @param array{name:string,qubits:array<int>,params:array<mixed>|NDArray,clbits:array<int>} $op
+     * @return array{cells:array<int,string>,span:array<int>,clbits:array<int>,barrier:bool}
+     */
+    private function drawBuiltinOperation(array $op): array
+    {
+        $label = match ($op['name']) {
+            'qft' => 'QFT',
+            'qft_dg' => 'QFT†',
+            default => $op['name'],
+        };
+        if (in_array($op['name'], ['rx', 'ry', 'rz', 'p'], true)) {
+            $label .= sprintf('(%.3g)', $op['params'][0]);
+        } elseif ($op['name'] === 'u') {
+            $label .= sprintf('(%.3g,%.3g,%.3g)', $op['params'][0], $op['params'][1], $op['params'][2]);
+        }
+        $qs = $op['qubits'];
+        $contrib = [];
+        $span = [];
+        $clbits = [];
+        $barrier = false;
+        if ($op['name'] === 'measure') {
+            $contrib[$qs[0]] = "M(c{$op['clbits'][0]})";
+            $span = [$qs[0]];
+            $clbits = [$op['clbits'][0]];
+        } elseif ($op['name'] === 'barrier') {
+            $barrier = true;
+            foreach ($qs as $q) {
+                $contrib[$q] = '‖';
+            }
+            $span = array_values($qs);
+        } elseif (count($qs) === 1) {
+            $contrib[$qs[0]] = $label;
+            $span = [$qs[0]];
+        } elseif ($op['name'] === 'cx' || $op['name'] === 'cnot') {
+            [$c, $t] = $qs;
+            $contrib[$c] = '●';
+            $contrib[$t] = '⊕';
+            $span = range(min($c, $t), max($c, $t));
+            for ($q = min($c, $t) + 1; $q < max($c, $t); $q++) {
+                $contrib[$q] = '│';
+            }
+        } elseif ($op['name'] === 'cz') {
+            foreach ($qs as $q) {
+                $contrib[$q] = '●';
+            }
+            [$a, $b] = $qs;
+            $span = range(min($a, $b), max($a, $b));
+            for ($q = min($a, $b) + 1; $q < max($a, $b); $q++) {
+                $contrib[$q] = '│';
+            }
+        } elseif ($op['name'] === 'cp') {
+            [$c, $t] = $qs;
+            $contrib[$c] = '●';
+            $contrib[$t] = sprintf('cp(%.3g)', $op['params'][0]);
+            $span = range(min($c, $t), max($c, $t));
+            for ($q = min($c, $t) + 1; $q < max($c, $t); $q++) {
+                $contrib[$q] = '│';
+            }
+        } elseif ($op['name'] === 'swap') {
+            foreach ($qs as $q) {
+                $contrib[$q] = '×';
+            }
+            [$a, $b] = $qs;
+            $span = range(min($a, $b), max($a, $b));
+            for ($q = min($a, $b) + 1; $q < max($a, $b); $q++) {
+                $contrib[$q] = '│';
+            }
+        } else {
+            foreach ($qs as $q) {
+                $contrib[$q] = $label;
+            }
+            $span = array_values($qs);
+        }
+        return ['cells' => $contrib, 'span' => $span, 'clbits' => $clbits, 'barrier' => $barrier];
     }
 
     private static function displayWidth(string $s): int

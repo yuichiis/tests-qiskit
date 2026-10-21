@@ -44,6 +44,20 @@ class QFTGate implements CircuitGate
         return $this->inverse ? self::NAME_INVERSE : self::NAME;
     }
 
+    public function draw(array $qubits): array
+    {
+        $symbol = $this->inverse ? 'QFT†' : 'QFT';
+        $cells = [];
+        foreach ($qubits as $q) {
+            $cells[$q] = $symbol;
+        }
+        $span = range(min($qubits), max($qubits));
+        for ($q = min($qubits) + 1; $q < max($qubits); $q++) {
+            $cells[$q] = '│';
+        }
+        return ['cells' => $cells, 'span' => $span];
+    }
+
     public function isInverse(): bool
     {
         return $this->inverse;

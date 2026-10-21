@@ -31,6 +31,20 @@ class UnitaryGate implements CircuitGate
         return self::NAME;
     }
 
+    public function draw(array $qubits): array
+    {
+        $cells = [];
+        $symbol = count($qubits) === 1 ? self::NAME : 'U';
+        foreach ($qubits as $q) {
+            $cells[$q] = $symbol;
+        }
+        $span = range(min($qubits), max($qubits));
+        for ($q = min($qubits) + 1; $q < max($qubits); $q++) {
+            $cells[$q] = '│';
+        }
+        return ['cells' => $cells, 'span' => $span];
+    }
+
     public function control(int $numControls = 1): self
     {
         if ($numControls < 1) {

@@ -31,6 +31,12 @@ class HGate implements CircuitGate
         return self::NAME;
     }
 
+    public function draw(array $qubits): array
+    {
+        $q = $qubits[0];
+        return ['cells' => [$q => self::NAME], 'span' => [$q]];
+    }
+
     public function inverse(): self
     {
         return new self($this->mo);

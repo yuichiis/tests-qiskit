@@ -42,6 +42,22 @@ class MCPhaseGate implements CircuitGate
         return self::NAME;
     }
 
+    public function draw(array $qubits): array
+    {
+        $last = count($qubits) - 1;
+        $cells = [];
+        foreach ($qubits as $i => $q) {
+            $cells[$q] = $i === $last ? 'P' : '●';
+        }
+        $span = range(min($qubits), max($qubits));
+        foreach ($span as $q) {
+            if (!array_key_exists($q, $cells)) {
+                $cells[$q] = '│';
+            }
+        }
+        return ['cells' => $cells, 'span' => $span];
+    }
+
     public function inverse(): self
     {
         return new self(-$this->lambda, $this->numCtrlQubits, $this->ctrlState, $this->mo);
