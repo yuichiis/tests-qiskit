@@ -5,6 +5,7 @@ namespace Rindow\Qubit;
 
 use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
+use Rindow\Qubit\Circuit\MCPhaseGate;
 use Rindow\Qubit\Circuit\MCXGate;
 use Rindow\Qubit\Circuit\QFTGate;
 use Rindow\Qubit\Circuit\UnitaryGate;
@@ -97,11 +98,17 @@ class QuantumCircuit
 
     public function append(string|CircuitGate $gate, array $qubits, array|NDArray $params = [], array $clbits = []): static
     {
-        if ($gate instanceof UnitaryGate || $gate instanceof QFTGate || $gate instanceof MCXGate) {
+        if (
+            $gate instanceof UnitaryGate
+            || $gate instanceof QFTGate
+            || $gate instanceof MCXGate
+            || $gate instanceof MCPhaseGate
+        ) {
             $params = $gate->matrix();
             $name = match (true) {
-                $gate instanceof QFTGate => QFTGate::NAME,
+                $gate instanceof QFTGate => $gate->name(),
                 $gate instanceof MCXGate => MCXGate::NAME,
+                $gate instanceof MCPhaseGate => MCPhaseGate::NAME,
                 default => UnitaryGate::NAME,
             };
             $dim = $gate->dimension();
@@ -463,7 +470,11 @@ class QuantumCircuit
         /** @var array<int,array{cells:array<int,string>,used:array<int,bool>,usedClbits:array<int,bool>,barrier:bool}> $columns */
         $columns = [];
         foreach ($this->operations as $op) {
-            $label = $op['name'] === 'qft' ? 'QFT' : $op['name'];
+            $label = match ($op['name']) {
+                'qft' => 'QFT',
+                'qft_dg' => 'QFT†',
+                default => $op['name'],
+            };
             if (in_array($op['name'], ['rx', 'ry', 'rz', 'p'], true)) {
                 $label .= sprintf('(%.3g)', $op['params'][0]);
             } elseif ($op['name'] === 'u') {
@@ -520,10 +531,11 @@ class QuantumCircuit
                 for ($q = min($a, $b) + 1; $q < max($a, $b); $q++) {
                     $contrib[$q] = '│';
                 }
-            } elseif ($op['name'] === 'mcx') {
+            } elseif ($op['name'] === 'mcx' || $op['name'] === 'mcphase') {
                 $last = count($qs) - 1;
+                $symbol = $op['name'] === 'mcx' ? '⊕' : 'P';
                 foreach ($qs as $i => $q) {
-                    $contrib[$q] = $i === $last ? '⊕' : '●';
+                    $contrib[$q] = $i === $last ? $symbol : '●';
                 }
                 $span = range(min($qs), max($qs));
                 for ($q = min($qs) + 1; $q < max($qs); $q++) {
@@ -531,8 +543,12 @@ class QuantumCircuit
                         $contrib[$q] = '│';
                     }
                 }
-            } elseif (($op['name'] === 'unitary' || $op['name'] === 'qft') && count($qs) > 1) {
-                $symbol = $op['name'] === 'qft' ? 'QFT' : 'U';
+            } elseif (in_array($op['name'], ['unitary', 'qft', 'qft_dg'], true) && count($qs) > 1) {
+                $symbol = match ($op['name']) {
+                    'qft' => 'QFT',
+                    'qft_dg' => 'QFT†',
+                    default => 'U',
+                };
                 foreach ($qs as $q) {
                     $contrib[$q] = $symbol;
                 }

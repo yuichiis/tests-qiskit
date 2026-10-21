@@ -144,8 +144,11 @@ class StatevectorSimulator
                 break;
             case 'unitary':
             case 'qft':
+            case 'qft_dg':
             case 'mcx':
-                // 通常は UnitaryGate / QFTGate / MCXGate が保持する NDArray がそのまま渡される。
+            case 'mcphase':
+                // 通常は UnitaryGate / QFTGate / MCXGate / MCPhaseGate が保持する
+                // NDArray がそのまま渡される。
                 // 直接呼び出し互換のため、旧形式の複素オブジェクト配列も受け付ける。
                 $mat = $params instanceof NDArray
                     ? $params
