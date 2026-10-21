@@ -16,6 +16,6 @@ echo $qc->draw();
 
 $sim = new StatevectorSampler();
 $result = $sim->run([$qc], shots: 1024)->result();
-$counts = $result[0]->data->meas->getCounts();
+$counts = $result[0]->getCounts();
 Visualization::showHistogram($counts);
 # 期待：{'0': 約500, '1': 約500}

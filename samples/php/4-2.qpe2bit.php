@@ -39,6 +39,6 @@ echo $qc->draw();
 
 $sim = new StatevectorSampler();
 $result = $sim->run([$qc], shots: 1024)->result();
-$counts = $result[0]->data->meas->getCounts();
+$counts = $result[0]->getCounts();
 Visualization::showHistogram($counts);
 # 期待：φ/2π = 1/8 なので 3ビットで '001' がほぼ 1024

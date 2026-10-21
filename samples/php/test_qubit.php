@@ -18,7 +18,7 @@ echo $qc->draw();
 
 $sampler = new StatevectorSampler();
 $result = $sampler->run([$qc], shots: 1024)->result();
-$counts = $result[0]->data->meas->getCounts();
+$counts = $result[0]->getCounts();
 //print_r($counts);
 // 期待値: '00' と '11' がほぼ半々
 
@@ -31,6 +31,6 @@ $qc3->h(0);
 $qc3->cx(0, 1);
 $qc3->cx(1, 2);
 $qc3->measureAll();
-$counts3 = $sampler->run([$qc3], shots: 1024)->result()[0]->data->meas->getCounts();
+$counts3 = $sampler->run([$qc3], shots: 1024)->result()[0]->getCounts();
 //print_r($counts3);
 Visualization::showHistogram($counts3);

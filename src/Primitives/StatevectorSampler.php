@@ -11,7 +11,7 @@ use Rindow\Qubit\QuantumCircuit;
  * ```php
  * $sampler = new StatevectorSampler();
  * $result = $sampler->run([$qc], shots: 1024)->result();
- * $counts = $result[0]->data->meas->getCounts();
+ * $counts = $result[0]->getCounts();
  * ```
  */
 class StatevectorSampler

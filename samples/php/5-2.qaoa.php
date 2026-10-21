@@ -77,7 +77,7 @@ echo $qc->draw();
 
 $sim = new StatevectorSampler();
 $result = $sim->run([$qc], shots: 1000)->result();
-$counts = $result[0]->data->meas->getCounts();
+$counts = $result[0]->getCounts();
 Visualization::showHistogram($counts);
 
 // 答えの表示：カット数（両端が別グループの辺の数）が最大のビット列を探す

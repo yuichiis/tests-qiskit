@@ -64,7 +64,7 @@ echo $qc->draw();
 
 $sim = new StatevectorSampler();
 $result = $sim->run([$qc], shots: 1024)->result();
-$counts = $result[0]->data->meas->getCounts();
+$counts = $result[0]->getCounts();
 Visualization::showHistogram($counts);
 
 // 古典後処理：連分数で周期 r を求めて因数にする

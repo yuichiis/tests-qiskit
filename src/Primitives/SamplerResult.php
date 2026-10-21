@@ -12,7 +12,7 @@ use Traversable;
 
 /**
  * qiskit の PrimitiveResult に相当. $result->getStatevector()
- * または $result[0]->data->meas->getCounts()
+ * または $result[0]->getCounts()
  */
 class SamplerResult implements ArrayAccess, Countable, IteratorAggregate
 {
@@ -35,7 +35,7 @@ class SamplerResult implements ArrayAccess, Countable, IteratorAggregate
 
     public function getStatevector(int $index = 0): Statevector
     {
-        return $this->get($index)->data->statevector;
+        return $this->get($index)->getStatevector();
     }
 
     // --- ArrayAccess / Countable / IteratorAggregate ---

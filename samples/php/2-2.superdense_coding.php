@@ -53,6 +53,6 @@ echo $qc->draw();
 
 $sim = new StatevectorSampler();
 $result = $sim->run([$qc], shots: 1024)->result();
-$counts = $result[0]->data->meas->getCounts();
+$counts = $result[0]->getCounts();
 Visualization::showHistogram($counts);
 # 期待：送ったメッセージと同じビット列が100%出る（例：10なら {'10': 1024}）

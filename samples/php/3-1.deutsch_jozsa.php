@@ -18,6 +18,6 @@ print($qc->draw());
 
 $sim = new StatevectorSampler();
 $result = $sim->run([$qc], shots: 512)->result();
-$counts = $result[0]->data->meas->getCounts();
+$counts = $result[0]->getCounts();
 Visualization::showHistogram($counts);
 # 期待：平衡関数なら `1` が出る、定数関数なら `0` が出る

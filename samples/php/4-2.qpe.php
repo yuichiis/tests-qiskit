@@ -51,6 +51,6 @@ echo $qc->draw();
 
 $sim = new StatevectorSampler();
 $result = $sim->run([$qc], shots: 1024)->result();
-$counts = $result[0]->data->meas->getCounts();
+$counts = $result[0]->getCounts();
 Visualization::showHistogram($counts);
 # 期待：{'001': 1024}（Tゲートの位相 π/4 = 2π/8 を3ビットで読み取る）
