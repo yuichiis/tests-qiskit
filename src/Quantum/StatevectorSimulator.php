@@ -6,6 +6,7 @@ namespace Rindow\Qubit\Quantum;
 use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
 use Rindow\Math\Matrix\MatrixOperator;
+use Rindow\Qubit\Circuit\HGate;
 use Rindow\Qubit\QuantumCircuit;
 use Rindow\Qubit\Math\IntMath;
 use Rindow\Qubit\Math\MatrixOperatorProvider;
@@ -95,8 +96,7 @@ class StatevectorSimulator
     {
         switch (strtolower($name)) {
             case 'h':
-                $s = 1.0 / sqrt(2.0);
-                $this->applySingle($qubits[0], [[$s, $s], [$s, -$s]]);
+                $this->applySingle($qubits[0], (new HGate($this->mo))->matrix());
                 break;
             case 'x':
                 $this->applySingle($qubits[0], [[0, 1], [1, 0]]);
