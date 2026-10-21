@@ -5,6 +5,7 @@ namespace Rindow\Qubit;
 
 use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
+use Rindow\Qubit\Circuit\HGate;
 use Rindow\Qubit\Circuit\MCPhaseGate;
 use Rindow\Qubit\Circuit\MCXGate;
 use Rindow\Qubit\Circuit\QFTGate;
@@ -100,6 +101,7 @@ class QuantumCircuit
     {
         if (
             $gate instanceof UnitaryGate
+            || $gate instanceof HGate
             || $gate instanceof QFTGate
             || $gate instanceof MCXGate
             || $gate instanceof MCPhaseGate
@@ -133,8 +135,9 @@ class QuantumCircuit
 
     public function h(int|array|\Traversable $qubit): static
     {
+        $gate = new HGate();
         foreach (self::normalizeQubitList($qubit) as $q) {
-            $this->append('h', [(int)$q]);
+            $this->append($gate, [(int)$q]);
         }
         return $this;
     }
