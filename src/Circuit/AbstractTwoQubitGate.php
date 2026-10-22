@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Rindow\Qubit\Circuit;
 
-abstract class TwoQubitGate extends MatrixGate
+abstract class AbstractTwoQubitGate extends AbstractMatrixGate
 {
     public function dimension(): int
     {

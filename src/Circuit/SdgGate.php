@@ -6,7 +6,7 @@ namespace Rindow\Qubit\Circuit;
 use Interop\Polite\Math\Matrix\NDArray;
 use function Rindow\Math\Matrix\C;
 
-class SdgGate extends SingleQubitGate
+class SdgGate extends AbstractSingleQubitGate
 {
     public const NAME = 'sdg';
 

@@ -5,7 +5,7 @@ namespace Rindow\Qubit\Circuit;
 
 use Interop\Polite\Math\Matrix\NDArray;
 
-class XGate extends SingleQubitGate
+class XGate extends AbstractSingleQubitGate
 {
     public const NAME = 'x';
 

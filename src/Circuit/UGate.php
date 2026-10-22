@@ -7,7 +7,7 @@ use Interop\Polite\Math\Matrix\NDArray;
 use Rindow\Math\Matrix\MatrixOperator;
 use function Rindow\Math\Matrix\C;
 
-class UGate extends SingleQubitGate
+class UGate extends AbstractSingleQubitGate
 {
     public const NAME = 'u';
 

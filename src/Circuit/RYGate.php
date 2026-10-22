@@ -6,7 +6,7 @@ namespace Rindow\Qubit\Circuit;
 use Interop\Polite\Math\Matrix\NDArray;
 use Rindow\Math\Matrix\MatrixOperator;
 
-class RYGate extends SingleQubitGate
+class RYGate extends AbstractSingleQubitGate
 {
     public const NAME = 'ry';
 

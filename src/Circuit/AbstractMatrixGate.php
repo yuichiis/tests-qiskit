@@ -8,7 +8,7 @@ use Rindow\Qubit\CircuitGate;
 use Rindow\Math\Matrix\MatrixOperator;
 use Rindow\Qubit\Math\MatrixOperatorProvider;
 
-abstract class MatrixGate implements CircuitGate
+abstract class AbstractMatrixGate implements CircuitGate
 {
     /** @var NDArray complex128, shape [dim, dim], row-major. */
     protected NDArray $matrix;

@@ -7,7 +7,7 @@ use Interop\Polite\Math\Matrix\NDArray;
 use Rindow\Math\Matrix\MatrixOperator;
 use function Rindow\Math\Matrix\C;
 
-class RXGate extends SingleQubitGate
+class RXGate extends AbstractSingleQubitGate
 {
     public const NAME = 'rx';
 
