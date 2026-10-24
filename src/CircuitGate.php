@@ -11,7 +11,7 @@ interface CircuitGate
 
     public function dimension(): int;
 
-    /** @return NDArray complex128, shape [dim, dim] */
+    /** @return NDArray complex64, shape [dim, dim] */
     public function matrix(): NDArray;
 
     /** @return array<object{real:float,imag:float}> Row-major complex numbers. */

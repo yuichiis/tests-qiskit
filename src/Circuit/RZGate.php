@@ -43,9 +43,9 @@ class RZGate extends AbstractSingleQubitGate
     {
         $c = cos($this->theta / 2.0);
         $s = sin($this->theta / 2.0);
-        return $this->mo->array(
+        return $this->la->array(
             [[C($c, -$s), 0], [0, C($c, $s)]],
-            dtype: NDArray::complex128
+            dtype: NDArray::complex64
         );
     }
 }

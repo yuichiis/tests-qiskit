@@ -21,6 +21,6 @@ class ZGate extends AbstractSingleQubitGate
 
     protected function buildMatrix(): NDArray
     {
-        return $this->mo->array([[1, 0], [0, -1]], dtype: NDArray::complex128);
+        return $this->la->array([[1, 0], [0, -1]], dtype: NDArray::complex64);
     }
 }

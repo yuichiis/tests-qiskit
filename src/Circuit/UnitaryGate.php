@@ -16,7 +16,7 @@ class UnitaryGate implements CircuitGate
 {
     public const NAME = 'unitary';
 
-    /** @var NDArray complex128, shape [dim, dim], row-major. */
+    /** @var NDArray complex64, shape [dim, dim], row-major. */
     private NDArray $matrix;
     private MatrixOperator $mo;
 
@@ -53,7 +53,7 @@ class UnitaryGate implements CircuitGate
         $dim = $this->dimension();
         $controlDim = 1 << $numControls;
         $size = $dim * $controlDim;
-        $out = $this->mo->zeros([$size * $size], NDArray::complex128);
+        $out = $this->la->zeros([$size * $size], NDArray::complex64);
         $src = $this->matrix->reshape([$dim * $dim]);
         for ($row = 0; $row < $size; $row++) {
             for ($col = 0; $col < $size; $col++) {
@@ -78,7 +78,7 @@ class UnitaryGate implements CircuitGate
     {
         $mo = MatrixOperatorProvider::get();
         $dim = 8;
-        $matrix = $mo->zeros([$dim * $dim], NDArray::complex128);
+        $matrix = $mo->zeros([$dim * $dim], NDArray::complex64);
         for ($input = 0; $input < $dim; $input++) {
             $control = $input & 1;
             $a = ($input >> 1) & 1;
@@ -94,7 +94,7 @@ class UnitaryGate implements CircuitGate
         return $this->matrix->shape()[0];
     }
 
-    /** @return NDArray complex128, shape [dim, dim] */
+    /** @return NDArray complex64, shape [dim, dim] */
     public function matrix(): NDArray
     {
         return $this->matrix;
@@ -121,8 +121,8 @@ class UnitaryGate implements CircuitGate
                 throw new InvalidArgumentException('unitary() requires an NxN matrix (N=2^k).');
             }
             $this->checkDimension($shape[0]);
-            if ($matrix->dtype() !== NDArray::complex128) {
-                return $this->mo->astype($matrix, NDArray::complex128);
+            if ($matrix->dtype() !== NDArray::complex64) {
+                return $this->la->astype($matrix, NDArray::complex64);
             }
             return $matrix;
         }
@@ -130,7 +130,7 @@ class UnitaryGate implements CircuitGate
         $rows = array_values($matrix);
         $dim = count($rows);
         $this->checkDimension($dim);
-        $flat = $this->mo->zeros([$dim * $dim], NDArray::complex128);
+        $flat = $this->la->zeros([$dim * $dim], NDArray::complex64);
         $idx = 0;
         foreach ($rows as $row) {
             if (!is_array($row) || count($row) !== $dim) {

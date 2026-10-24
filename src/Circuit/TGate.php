@@ -23,6 +23,6 @@ class TGate extends AbstractSingleQubitGate
     protected function buildMatrix(): NDArray
     {
         $s = 1.0 / sqrt(2.0);
-        return $this->mo->array([[1, 0], [0, C($s, $s)]], dtype: NDArray::complex128);
+        return $this->la->array([[1, 0], [0, C($s, $s)]], dtype: NDArray::complex64);
     }
 }

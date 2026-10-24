@@ -22,9 +22,9 @@ class YGate extends AbstractSingleQubitGate
 
     protected function buildMatrix(): NDArray
     {
-        return $this->mo->array(
+        return $this->la->array(
             [[0, C(0.0, -1.0)], [C(0.0, 1.0), 0]],
-            dtype: NDArray::complex128
+            dtype: NDArray::complex64
         );
     }
 }

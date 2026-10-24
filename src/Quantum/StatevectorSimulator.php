@@ -34,7 +34,7 @@ use function Rindow\Math\Matrix\C;
  * Rindow NDArray + BLAS 対応の状態ベクトルシミュレータ.
  * qubit 0 = LSB (Qiskit規約) で状態を保持する.
  *
- * 内部表現は complex128 NDArray x1: shape [dim]。
+ * 内部表現は complex64 NDArray x1: shape [dim]。
  * rindow-matlib の transpose が複素数の共役なし転置で
  * N次元対応になったため、1/2qubitゲートとも転置+gemm各1発で書ける。
  * test.php の流儀 (MatrixOperator + LinearAlgebra::gemm 等) に沿う。
@@ -74,7 +74,7 @@ class StatevectorSimulator
         $this->dim = 1 << $numQubits;
         $this->mo = $mo ?? self::sharedMatrixOperator();
         $this->la = $this->mo->la();
-        $this->state = $this->mo->zeros([$this->dim], NDArray::complex128);
+        $this->state = $this->la->zeros([$this->dim], NDArray::complex64);
         $this->state[0] = C(1, 0);
     }
 
@@ -97,6 +97,11 @@ class StatevectorSimulator
     public function matrixOperator(): MatrixOperator
     {
         return $this->mo;
+    }
+
+    public function la(): object
+    {
+        return $this->la;
     }
 
     public function applyCircuit(QuantumCircuit $circuit): void
@@ -217,13 +222,13 @@ class StatevectorSimulator
     {
         $U = $matrix instanceof NDArray
             ? $matrix
-            : $this->mo->array($matrix, dtype: NDArray::complex128);
+            : $this->la->array($matrix, dtype: NDArray::complex64);
         $shape = $U->shape();
         if (count($shape) !== 2 || $shape[0] !== $shape[1]) {
             throw new InvalidArgumentException('Gate matrix must be a square 2D matrix.');
         }
-        if ($U->dtype() !== NDArray::complex128) {
-            $U = $this->mo->astype($U, NDArray::complex128);
+        if ($U->dtype() !== NDArray::complex64) {
+            $U = $this->la->astype($U, NDArray::complex64);
         }
         return $U;
     }
@@ -326,7 +331,7 @@ class StatevectorSimulator
         [$L, $M, $H] = $this->twoQubitDims($qb, $qa);
         $la = $this->la;
         $mo = $this->mo;
-        $U = $mo->array($mat, dtype: NDArray::complex128);
+        $U = $mo->array($mat, dtype: NDArray::complex64);
         $N = $H * $M * $L;
         // [H,qb,M,qa,L] -> [H,M,L,qb,qa] -> [N,4]
         $flat = $la->transpose(
@@ -510,7 +515,7 @@ class StatevectorSimulator
         }
         // state index -> clbit index の変換表を作り、scatterAdd で集計する.
         // measureMap に同じ clbit が複数回現れた場合は後勝ち (従来動作)。
-        $indices = $this->mo->zeros([$this->dim], NDArray::int32);
+        $indices = $this->la->zeros([$this->dim], NDArray::int32);
         for ($s = 0; $s < $this->dim; $s++) {
             $t = 0;
             foreach ($measureMap as $q => $c) {
@@ -522,7 +527,7 @@ class StatevectorSimulator
             }
             $indices[$s] = $t;
         }
-        $scattered = $this->mo->zeros([1 << $numClbits], NDArray::float64);
+        $scattered = $this->la->zeros([1 << $numClbits], NDArray::float64);
         $this->la->scatterAdd($indices, $stateProbs, $scattered);
         $counts = [];
         foreach ($scattered->toArray() as $t => $p) {

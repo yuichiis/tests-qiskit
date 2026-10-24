@@ -41,9 +41,9 @@ class PhaseGate extends AbstractSingleQubitGate
 
     protected function buildMatrix(): NDArray
     {
-        return $this->mo->array(
+        return $this->la->array(
             [[1, 0], [0, C(cos($this->lambda), sin($this->lambda))]],
-            dtype: NDArray::complex128
+            dtype: NDArray::complex64
         );
     }
 }

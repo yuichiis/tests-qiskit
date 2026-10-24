@@ -16,7 +16,7 @@ class MCXGate implements CircuitGate
 
     private int $numCtrlQubits;
     private int $ctrlState;
-    /** @var NDArray complex128, shape [dim, dim], row-major. */
+    /** @var NDArray complex64, shape [dim, dim], row-major. */
     private NDArray $matrix;
     private MatrixOperator $mo;
 
@@ -75,7 +75,7 @@ class MCXGate implements CircuitGate
         return $this->matrix->shape()[0];
     }
 
-    /** @return NDArray complex128, shape [dim, dim] */
+    /** @return NDArray complex64, shape [dim, dim] */
     public function matrix(): NDArray
     {
         return $this->matrix;
@@ -99,7 +99,7 @@ class MCXGate implements CircuitGate
         $dim = 1 << $this->numQubits();
         $targetBit = 1 << $this->numCtrlQubits;
         $controlMask = $targetBit - 1;
-        $flat = $this->mo->zeros([$dim * $dim], NDArray::complex128);
+        $flat = $this->la->zeros([$dim * $dim], NDArray::complex64);
         for ($input = 0; $input < $dim; $input++) {
             $output = $input;
             if (($input & $controlMask) === $this->ctrlState) {

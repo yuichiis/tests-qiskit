@@ -17,7 +17,7 @@ class MCPhaseGate implements CircuitGate
     private float $lambda;
     private int $numCtrlQubits;
     private int $ctrlState;
-    /** @var NDArray complex128, shape [dim, dim], row-major. */
+    /** @var NDArray complex64, shape [dim, dim], row-major. */
     private NDArray $matrix;
     private MatrixOperator $mo;
 
@@ -88,7 +88,7 @@ class MCPhaseGate implements CircuitGate
         return $this->matrix->shape()[0];
     }
 
-    /** @return NDArray complex128, shape [dim, dim] */
+    /** @return NDArray complex64, shape [dim, dim] */
     public function matrix(): NDArray
     {
         return $this->matrix;
@@ -113,7 +113,7 @@ class MCPhaseGate implements CircuitGate
         $targetBit = 1 << $this->numCtrlQubits;
         $controlMask = $targetBit - 1;
         $phase = C(cos($this->lambda), sin($this->lambda));
-        $flat = $this->mo->zeros([$dim * $dim], NDArray::complex128);
+        $flat = $this->la->zeros([$dim * $dim], NDArray::complex64);
         for ($input = 0; $input < $dim; $input++) {
             $value = C(1.0, 0.0);
             if (($input & $controlMask) === $this->ctrlState && ($input & $targetBit) !== 0) {

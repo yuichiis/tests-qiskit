@@ -57,12 +57,12 @@ class UGate extends AbstractSingleQubitGate
     {
         $c = cos($this->theta / 2.0);
         $s = sin($this->theta / 2.0);
-        return $this->mo->array([
+        return $this->la->array([
             [$c, C(-$s * cos($this->lambda), -$s * sin($this->lambda))],
             [
                 C($s * cos($this->phi), $s * sin($this->phi)),
                 C($c * cos($this->phi + $this->lambda), $c * sin($this->phi + $this->lambda)),
             ],
-        ], dtype: NDArray::complex128);
+        ], dtype: NDArray::complex64);
     }
 }

@@ -17,7 +17,7 @@ class QFTGate implements CircuitGate
 
     private int $numQubits;
     private bool $inverse = false;
-    /** @var NDArray complex128, shape [dim, dim], row-major. */
+    /** @var NDArray complex64, shape [dim, dim], row-major. */
     private NDArray $matrix;
     private MatrixOperator $mo;
 
@@ -73,7 +73,7 @@ class QFTGate implements CircuitGate
         return $this->matrix->shape()[0];
     }
 
-    /** @return NDArray complex128, shape [dim, dim] */
+    /** @return NDArray complex64, shape [dim, dim] */
     public function matrix(): NDArray
     {
         return $this->matrix;
@@ -97,7 +97,7 @@ class QFTGate implements CircuitGate
         $dim = 1 << $this->numQubits;
         $scale = 1.0 / sqrt((float)$dim);
         $sign = $inverse ? -1.0 : 1.0;
-        $flat = $this->mo->zeros([$dim * $dim], NDArray::complex128);
+        $flat = $this->la->zeros([$dim * $dim], NDArray::complex64);
         for ($j = 0; $j < $dim; $j++) {
             for ($k = 0; $k < $dim; $k++) {
                 $angle = $sign * 2.0 * M_PI * $j * $k / $dim;

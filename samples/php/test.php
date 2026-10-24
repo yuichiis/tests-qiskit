@@ -22,21 +22,21 @@ $inv = 1/sqrt(2);
 $H = [[$inv,$inv],[$inv,-$inv]];
 $H_full = kron($H,$I2); // qubit0(MSB)にH、qubit1にI
 
-function toComplexMatrix($m, $mo) {
+function toComplexMatrix($m, $la) {
     $rows=[];
     foreach($m as $row){
         $r=[];
         foreach($row as $v){ $r[]=C($v,0); }
         $rows[]=$r;
     }
-    return $mo->array($rows, dtype: NDArray::complex128);
+    return $la->array($rows, dtype: NDArray::complex64);
 }
-$Hf = toComplexMatrix($H_full,$mo);
+$Hf = toComplexMatrix($H_full,$la);
 
-$psi0 = $mo->array([C(1,0),C(0,0),C(0,0),C(0,0)], dtype: NDArray::complex128); // |00>
+$psi0 = $la->array([C(1,0),C(0,0),C(0,0),C(0,0)], dtype: NDArray::complex64); // |00>
 
 $psi1 = $la->gemv($Hf, $psi0);
-echo "After H(q0): ".$mo->toString($psi1)."\n";
+echo "After H(q0): ".$la->toString($psi1)."\n";
 
 // CNOT (control=q0(MSB), target=q1)
 $CNOT = [
@@ -47,9 +47,9 @@ $CNOT = [
 ];
 $Cf = toComplexMatrix($CNOT,$mo);
 $psi2 = $la->gemv($Cf, $psi1);
-echo "After CNOT: ".$mo->toString($psi2)."\n";
+echo "After CNOT: ".$la->toString($psi2)."\n";
 
-// |amplitude|^2 は la->abs() が complex128 未対応だったため、
+// |amplitude|^2 は la->abs() が complex64 未対応だったため、
 // ArrayAccessで real/imag を直接取り出して手計算
 //$probs=[];
 //for($i=0;$i<4;$i++){
@@ -59,9 +59,9 @@ echo "After CNOT: ".$mo->toString($psi2)."\n";
 //print_r($probs);
 
 // 確率分布からのショットサンプリング(測定)
-//$probsArr = $mo->array($probs, dtype: NDArray::float64);
+//$probsArr = $la->array($probs, dtype: NDArray::float64);
 $probsArr = $la->scal(2.0, $la->log($la->abs($psi2)));
-echo $mo->toString($probsArr)."\n";
+echo $la->toString($probsArr)."\n";
 $samples = $la->randomCategorical($probsArr, numSamples: 1024);
 $counts = $la->bincount($samples,4);
 $labels = ['00','01','10','11'];

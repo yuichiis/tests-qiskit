@@ -22,9 +22,9 @@ class HGate extends AbstractSingleQubitGate
     protected function buildMatrix(): NDArray
     {
         $s = 1.0 / sqrt(2.0);
-        return $this->mo->array(
+        return $this->la->array(
             [[$s, $s], [$s, -$s]],
-            dtype: NDArray::complex128
+            dtype: NDArray::complex64
         );
     }
 }

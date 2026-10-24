@@ -10,13 +10,15 @@ use Rindow\Qubit\Math\MatrixOperatorProvider;
 
 abstract class AbstractMatrixGate implements CircuitGate
 {
-    /** @var NDArray complex128, shape [dim, dim], row-major. */
+    /** @var NDArray complex64, shape [dim, dim], row-major. */
     protected NDArray $matrix;
     protected MatrixOperator $mo;
+    protected object $la;
 
     public function __construct(?MatrixOperator $mo = null)
     {
         $this->mo = $mo ?? MatrixOperatorProvider::get();
+        $this->la = $this->mo->la();
         $this->matrix = $this->buildMatrix();
     }
 
@@ -27,7 +29,7 @@ abstract class AbstractMatrixGate implements CircuitGate
         return $this->matrix->shape()[0];
     }
 
-    /** @return NDArray complex128, shape [dim, dim] */
+    /** @return NDArray complex64, shape [dim, dim] */
     public function matrix(): NDArray
     {
         return $this->matrix;

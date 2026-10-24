@@ -21,6 +21,6 @@ class XGate extends AbstractSingleQubitGate
 
     protected function buildMatrix(): NDArray
     {
-        return $this->mo->array([[0, 1], [1, 0]], dtype: NDArray::complex128);
+        return $this->la->array([[0, 1], [1, 0]], dtype: NDArray::complex64);
     }
 }

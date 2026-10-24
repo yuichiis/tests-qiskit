@@ -26,11 +26,11 @@ class CXGate extends AbstractTwoQubitGate
 
     protected function buildMatrix(): NDArray
     {
-        return $this->mo->array([
+        return $this->la->array([
             [1, 0, 0, 0],
             [0, 0, 0, 1],
             [0, 0, 1, 0],
             [0, 1, 0, 0],
-        ], dtype: NDArray::complex128);
+        ], dtype: NDArray::complex64);
     }
 }
