@@ -19,10 +19,12 @@ class UnitaryGate implements CircuitGate
     /** @var NDArray complex64, shape [dim, dim], row-major. */
     private NDArray $matrix;
     private MatrixOperator $mo;
+    private object $la;
 
     public function __construct(array|NDArray $matrix, ?MatrixOperator $mo = null)
     {
         $this->mo = $mo ?? MatrixOperatorProvider::get();
+        $this->la = $this->mo->la();
         $this->matrix = $this->normalizeMatrix($matrix);
     }
 

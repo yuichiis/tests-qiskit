@@ -20,6 +20,7 @@ class QFTGate implements CircuitGate
     /** @var NDArray complex64, shape [dim, dim], row-major. */
     private NDArray $matrix;
     private MatrixOperator $mo;
+    private object $la;
 
     public function __construct(int $numQubits, ?MatrixOperator $mo = null)
     {
@@ -27,6 +28,7 @@ class QFTGate implements CircuitGate
             throw new InvalidArgumentException('numQubits must be in [1, 30].');
         }
         $this->mo = $mo ?? MatrixOperatorProvider::get();
+        $this->la = $this->mo->la();
         $this->numQubits = $numQubits;
         $this->matrix = $this->buildMatrix(false);
     }

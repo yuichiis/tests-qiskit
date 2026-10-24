@@ -19,6 +19,7 @@ class MCXGate implements CircuitGate
     /** @var NDArray complex64, shape [dim, dim], row-major. */
     private NDArray $matrix;
     private MatrixOperator $mo;
+    private object $la;
 
     public function __construct(
         int $numCtrlQubits,
@@ -29,6 +30,7 @@ class MCXGate implements CircuitGate
             throw new InvalidArgumentException('numCtrlQubits must be in [1, 29].');
         }
         $this->mo = $mo ?? MatrixOperatorProvider::get();
+        $this->la = $this->mo->la();
         $this->numCtrlQubits = $numCtrlQubits;
         $this->ctrlState = self::normalizeCtrlState($ctrlState, $numCtrlQubits);
         $this->matrix = $this->buildMatrix();
