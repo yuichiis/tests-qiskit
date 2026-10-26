@@ -7,7 +7,7 @@ use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
 use Rindow\Qubit\CircuitGate;
 use Rindow\Math\Matrix\MatrixOperator;
-use Rindow\Qubit\Math\MatrixOperatorProvider;
+use Rindow\Qubit\Math\LinearAlgebraProvider;
 use function Rindow\Math\Matrix\C;
 
 class QFTGate implements CircuitGate
@@ -19,16 +19,16 @@ class QFTGate implements CircuitGate
     private bool $inverse = false;
     /** @var NDArray complex64, shape [dim, dim], row-major. */
     private NDArray $matrix;
-    private MatrixOperator $mo;
     private object $la;
 
-    public function __construct(int $numQubits, ?MatrixOperator $mo = null)
-    {
+    public function __construct(
+        int $numQubits,
+        ?object $la=null,
+    ) {
         if ($numQubits < 1 || $numQubits > 30) {
             throw new InvalidArgumentException('numQubits must be in [1, 30].');
         }
-        $this->mo = $mo ?? MatrixOperatorProvider::get();
-        $this->la = $this->mo->la();
+        $this->la = $la ?? LinearAlgebraProvider::get();
         $this->numQubits = $numQubits;
         $this->matrix = $this->buildMatrix(false);
     }

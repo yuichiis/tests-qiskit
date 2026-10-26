@@ -7,7 +7,7 @@ use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
 use Rindow\Qubit\CircuitGate;
 use Rindow\Math\Matrix\MatrixOperator;
-use Rindow\Qubit\Math\MatrixOperatorProvider;
+use Rindow\Qubit\Math\LinearAlgebraProvider;
 use function Rindow\Math\Matrix\C;
 
 class MCXGate implements CircuitGate
@@ -18,19 +18,17 @@ class MCXGate implements CircuitGate
     private int $ctrlState;
     /** @var NDArray complex64, shape [dim, dim], row-major. */
     private NDArray $matrix;
-    private MatrixOperator $mo;
     private object $la;
 
     public function __construct(
         int $numCtrlQubits,
         int|string|null $ctrlState = null,
-        ?MatrixOperator $mo = null
+        ?object $la=null
     ) {
         if ($numCtrlQubits < 1 || $numCtrlQubits > 29) {
             throw new InvalidArgumentException('numCtrlQubits must be in [1, 29].');
         }
-        $this->mo = $mo ?? MatrixOperatorProvider::get();
-        $this->la = $this->mo->la();
+        $this->la = $la ?? LinearAlgebraProvider::get();
         $this->numCtrlQubits = $numCtrlQubits;
         $this->ctrlState = self::normalizeCtrlState($ctrlState, $numCtrlQubits);
         $this->matrix = $this->buildMatrix();

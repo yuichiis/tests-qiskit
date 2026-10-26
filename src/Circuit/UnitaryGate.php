@@ -7,9 +7,8 @@ use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
 use Rindow\Math\Matrix\Complex;
 use Rindow\Math\Matrix\MatrixOperator;
-use Rindow\Qubit\CircuitUtils;
 use Rindow\Qubit\CircuitGate;
-use Rindow\Qubit\Math\MatrixOperatorProvider;
+use Rindow\Qubit\Math\LinearAlgebraProvider;
 use function Rindow\Math\Matrix\C;
 
 class UnitaryGate implements CircuitGate
@@ -18,13 +17,13 @@ class UnitaryGate implements CircuitGate
 
     /** @var NDArray complex64, shape [dim, dim], row-major. */
     private NDArray $matrix;
-    private MatrixOperator $mo;
     private object $la;
 
-    public function __construct(array|NDArray $matrix, ?MatrixOperator $mo = null)
-    {
-        $this->mo = $mo ?? MatrixOperatorProvider::get();
-        $this->la = $this->mo->la();
+    public function __construct(
+        array|NDArray $matrix,
+        ?object $la = null
+    ) {
+        $this->la = $la ?? LinearAlgebraProvider::get();
         $this->matrix = $this->normalizeMatrix($matrix);
     }
 
@@ -73,14 +72,14 @@ class UnitaryGate implements CircuitGate
                 }
             }
         }
-        return new self($out->reshape([$size, $size]), $this->mo);
+        return new self($out->reshape([$size, $size]), $this->la);
     }
 
     public static function fredkin(): self
     {
-        $mo = MatrixOperatorProvider::get();
+        $la = LinearAlgebraProvider::get();
         $dim = 8;
-        $matrix = $mo->zeros([$dim * $dim], NDArray::complex64);
+        $matrix = $la->zeros([$dim * $dim], NDArray::complex64);
         for ($input = 0; $input < $dim; $input++) {
             $control = $input & 1;
             $a = ($input >> 1) & 1;
@@ -88,7 +87,7 @@ class UnitaryGate implements CircuitGate
             $output = $control ? ($control | ($b << 1) | ($a << 2)) : $input;
             $matrix[$output * $dim + $input] = C(1.0, 0.0);
         }
-        return new self($matrix->reshape([$dim, $dim]), $mo);
+        return new self($matrix->reshape([$dim, $dim]));
     }
 
     public function dimension(): int

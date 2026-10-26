@@ -6,19 +6,17 @@ namespace Rindow\Qubit\Circuit;
 use Interop\Polite\Math\Matrix\NDArray;
 use Rindow\Qubit\CircuitGate;
 use Rindow\Math\Matrix\MatrixOperator;
-use Rindow\Qubit\Math\MatrixOperatorProvider;
+use Rindow\Qubit\Math\LinearAlgebraProvider;
 
 abstract class AbstractMatrixGate implements CircuitGate
 {
     /** @var NDArray complex64, shape [dim, dim], row-major. */
     protected NDArray $matrix;
-    protected MatrixOperator $mo;
     protected object $la;
 
-    public function __construct(?MatrixOperator $mo = null)
+    public function __construct(?object $la=null)
     {
-        $this->mo = $mo ?? MatrixOperatorProvider::get();
-        $this->la = $this->mo->la();
+        $this->la = $la ?? LinearAlgebraProvider::get();
         $this->matrix = $this->buildMatrix();
     }
 

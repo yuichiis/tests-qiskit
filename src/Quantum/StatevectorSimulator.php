@@ -27,7 +27,7 @@ use Rindow\Qubit\Circuit\ZGate;
 use Rindow\Qubit\CircuitGate;
 use Rindow\Qubit\QuantumCircuit;
 use Rindow\Qubit\Math\IntMath;
-use Rindow\Qubit\Math\MatrixOperatorProvider;
+use Rindow\Qubit\Math\LinearAlgebraProvider;
 use function Rindow\Math\Matrix\C;
 
 /**
@@ -51,29 +51,24 @@ class StatevectorSimulator
 {
     private int $numQubits;
     private int $dim;
-    private MatrixOperator $mo;
     private object $la;
     private NDArray $state;
 
-    public static function setSharedMatrixOperator(?MatrixOperator $mo): void
+    public static function sharedLinearAlgebra(): object
     {
-        MatrixOperatorProvider::set($mo);
+        return LinearAlgebraProvider::get();
     }
 
-    public static function sharedMatrixOperator(): MatrixOperator
-    {
-        return MatrixOperatorProvider::get();
-    }
-
-    public function __construct(int $numQubits, ?MatrixOperator $mo = null)
-    {
+    public function __construct(
+        int $numQubits,
+        ?object $la = null
+    ) {
         if ($numQubits < 1 || $numQubits > 30) {
             throw new InvalidArgumentException('numQubits must be in [1, 30].');
         }
         $this->numQubits = $numQubits;
         $this->dim = 1 << $numQubits;
-        $this->mo = $mo ?? self::sharedMatrixOperator();
-        $this->la = $this->mo->la();
+        $this->la = $la ?? LinearAlgebraProvider::get();
         $this->state = $this->la->zeros([$this->dim], NDArray::complex64);
         $this->state[0] = C(1, 0);
     }
@@ -92,11 +87,6 @@ class StatevectorSimulator
     public function stateNDArray(): NDArray
     {
         return $this->state;
-    }
-
-    public function matrixOperator(): MatrixOperator
-    {
-        return $this->mo;
     }
 
     public function la(): object
@@ -453,12 +443,11 @@ class StatevectorSimulator
     /** @return array<int,object{real:float,imag:float}> */
     public function getStatevector(): array
     {
-        $buf = $this->state->buffer();
-        $off = $this->state->offset();
+        $flat = $this->state->reshape([$this->state->size()]);
         $out = [];
-        for ($i = 0; $i < $this->dim; $i++) {
-            $c = $buf[$off + $i];
-            $out[] = (object)['real' => (float)$c->real, 'imag' => (float)$c->imag];
+        foreach ($flat as $c) {
+            $value = $this->la->scalar($c);
+            $out[] = (object)['real' => (float)$value->real, 'imag' => (float)$value->imag];
         }
         return $out;
     }
