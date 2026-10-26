@@ -19,7 +19,7 @@ uv run --active python samples/test.py
 ```
 
 ### GPU
-```
+```powershell
 $env:RINDOW_QUBIT_LINEAR_ALGEBRA = "clblast::GPU"
 php samples\test_qubit.php
 ```
