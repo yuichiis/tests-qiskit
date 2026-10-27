@@ -36,10 +36,9 @@ abstract class AbstractMatrixGate implements CircuitGate
     public function parameters(): array
     {
         $dim = $this->dimension();
-        $flat = $this->matrix->reshape([$dim * $dim]);
+        $values = $this->matrix->reshape([$dim * $dim])->toArray();
         $out = [];
-        for ($i = 0; $i < $dim * $dim; $i++) {
-            $c = $flat[$i];
+        foreach ($values as $c) {
             $out[] = (object)['real' => (float)$c->real, 'imag' => (float)$c->imag];
         }
         return $out;
