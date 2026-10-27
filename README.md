@@ -24,3 +24,14 @@ $env:RINDOW_QUBIT_LINEAR_ALGEBRA = "clblast::GPU"
 php samples\test_qubit.php
 ```
 
+## Tests
+```bash
+composer install
+composer test
+```
+
+If PHPUnit is installed globally, run it directly:
+```bash
+phpunit -c tests/phpunit.xml
+```
+

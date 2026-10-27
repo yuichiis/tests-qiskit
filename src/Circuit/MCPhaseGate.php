@@ -59,7 +59,7 @@ class MCPhaseGate implements CircuitGate
 
     public function inverse(): self
     {
-        return new self(-$this->lambda, $this->numCtrlQubits, $this->ctrlState, $this->mo);
+        return new self(-$this->lambda, $this->numCtrlQubits, $this->ctrlState, $this->la);
     }
 
     public function lambda(): float

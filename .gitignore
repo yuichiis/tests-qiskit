@@ -3,3 +3,5 @@ vendor/
 composer.lock
 composer.phar
 /.vscode/
+.phpunit.cache/
+.phpunit.result.cache

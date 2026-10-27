@@ -122,7 +122,7 @@ class UnitaryGate implements CircuitGate
             }
             $this->checkDimension($shape[0]);
             if ($matrix->dtype() !== NDArray::complex64) {
-                return $this->la->astype($matrix, NDArray::complex64);
+                return $this->la->array($matrix->toArray(), dtype: NDArray::complex64);
             }
             return $matrix;
         }

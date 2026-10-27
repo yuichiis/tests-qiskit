@@ -212,7 +212,7 @@ class StatevectorSimulator
             throw new InvalidArgumentException('Gate matrix must be a square 2D matrix.');
         }
         if ($U->dtype() !== NDArray::complex64) {
-            $U = $this->la->astype($U, NDArray::complex64);
+            $U = $this->la->array($U->toArray(), dtype: NDArray::complex64);
         }
         return $U;
     }
@@ -509,7 +509,7 @@ class StatevectorSimulator
             }
             $indices[$s] = $t;
         }
-        $scattered = $this->la->zeros([1 << $numClbits], NDArray::float64);
+        $scattered = $this->la->zeros([1 << $numClbits], $stateProbs->dtype());
         $this->la->scatterAdd($indices, $stateProbs, $scattered);
         $counts = [];
         foreach ($scattered->toArray() as $t => $p) {

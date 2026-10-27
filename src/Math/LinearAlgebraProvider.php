@@ -5,6 +5,7 @@ namespace Rindow\Qubit\Math;
 
 use Rindow\Math\Matrix\MatrixOperator;
 use Interop\Polite\Math\Matrix\OpenCL;
+use RuntimeException;
 
 final class LinearAlgebraProvider
 {
