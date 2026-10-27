@@ -17,7 +17,7 @@ class TGate extends AbstractSingleQubitGate
 
     public function inverse(): TdgGate
     {
-        return new TdgGate($this->mo);
+        return new TdgGate(la:$this->la);
     }
 
     protected function buildMatrix(): NDArray

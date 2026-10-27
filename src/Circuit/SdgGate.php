@@ -17,7 +17,7 @@ class SdgGate extends AbstractSingleQubitGate
 
     public function inverse(): SGate
     {
-        return new SGate($this->mo);
+        return new SGate(la:$this->la);
     }
 
     protected function buildMatrix(): NDArray

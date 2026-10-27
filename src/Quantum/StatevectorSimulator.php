@@ -5,7 +5,6 @@ namespace Rindow\Qubit\Quantum;
 
 use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
-use Rindow\Math\Matrix\MatrixOperator;
 use Rindow\Qubit\Circuit\CPhaseGate;
 use Rindow\Qubit\Circuit\CXGate;
 use Rindow\Qubit\Circuit\CZGate;
@@ -37,7 +36,7 @@ use function Rindow\Math\Matrix\C;
  * 内部表現は complex64 NDArray x1: shape [dim]。
  * rindow-matlib の transpose が複素数の共役なし転置で
  * N次元対応になったため、1/2qubitゲートとも転置+gemm各1発で書ける。
- * test.php の流儀 (MatrixOperator + LinearAlgebra::gemm 等) に沿う。
+ * test.php の流儀 (LinearAlgebra::gemm 等) に沿う。
  *
  * 1qubitゲート U(2x2):
  *   [H,2,L] -> transpose[0,2,1] -> [H,L,2] -> reshape[M,2] (M=H*L)
@@ -54,14 +53,9 @@ class StatevectorSimulator
     private object $la;
     private NDArray $state;
 
-    public static function sharedLinearAlgebra(): object
-    {
-        return LinearAlgebraProvider::get();
-    }
-
     public function __construct(
         int $numQubits,
-        ?object $la = null
+        ?object $la=null
     ) {
         if ($numQubits < 1 || $numQubits > 30) {
             throw new InvalidArgumentException('numQubits must be in [1, 30].');
@@ -147,24 +141,24 @@ class StatevectorSimulator
     private function standardGate(string $name, array $params): ?CircuitGate
     {
         return match ($name) {
-            'h' => new HGate($this->mo),
-            'x' => new XGate($this->mo),
-            'y' => new YGate($this->mo),
-            'z' => new ZGate($this->mo),
-            's' => new SGate($this->mo),
-            'sdg', 's_dg' => new SdgGate($this->mo),
-            't' => new TGate($this->mo),
-            'tdg', 't_dg' => new TdgGate($this->mo),
-            'id', 'i' => new IGate($this->mo),
-            'rx' => new RXGate((float)$params[0], $this->mo),
-            'ry' => new RYGate((float)$params[0], $this->mo),
-            'rz' => new RZGate((float)$params[0], $this->mo),
-            'p' => new PhaseGate((float)$params[0], $this->mo),
-            'u' => new UGate((float)$params[0], (float)$params[1], (float)$params[2], $this->mo),
-            'cx', 'cnot' => new CXGate($this->mo),
-            'cz' => new CZGate($this->mo),
-            'cp' => new CPhaseGate((float)$params[0], $this->mo),
-            'swap' => new SwapGate($this->mo),
+            'h' => new HGate(la:$this->la),
+            'x' => new XGate(la:$this->la),
+            'y' => new YGate(la:$this->la),
+            'z' => new ZGate(la:$this->la),
+            's' => new SGate(la:$this->la),
+            'sdg', 's_dg' => new SdgGate(la:$this->la),
+            't' => new TGate(la:$this->la),
+            'tdg', 't_dg' => new TdgGate(la:$this->la),
+            'id', 'i' => new IGate(la:$this->la),
+            'rx' => new RXGate((float)$params[0], la:$this->la),
+            'ry' => new RYGate((float)$params[0], la:$this->la),
+            'rz' => new RZGate((float)$params[0], la:$this->la),
+            'p' => new PhaseGate((float)$params[0], la:$this->la),
+            'u' => new UGate((float)$params[0], (float)$params[1], (float)$params[2], la:$this->la),
+            'cx', 'cnot' => new CXGate(la:$this->la),
+            'cz' => new CZGate(la:$this->la),
+            'cp' => new CPhaseGate((float)$params[0], la:$this->la),
+            'swap' => new SwapGate(la:$this->la),
             default => null,
         };
     }
@@ -320,8 +314,7 @@ class StatevectorSimulator
     {
         [$L, $M, $H] = $this->twoQubitDims($qb, $qa);
         $la = $this->la;
-        $mo = $this->mo;
-        $U = $mo->array($mat, dtype: NDArray::complex64);
+        $U = $la->array($mat, dtype: NDArray::complex64);
         $N = $H * $M * $L;
         // [H,qb,M,qa,L] -> [H,M,L,qb,qa] -> [N,4]
         $flat = $la->transpose(

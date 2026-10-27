@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace Rindow\Qubit\Circuit;
 
 use Interop\Polite\Math\Matrix\NDArray;
-use Rindow\Math\Matrix\MatrixOperator;
 use function Rindow\Math\Matrix\C;
 
 class PhaseGate extends AbstractSingleQubitGate
@@ -13,10 +12,10 @@ class PhaseGate extends AbstractSingleQubitGate
 
     private float $lambda;
 
-    public function __construct(float $lambda, ?MatrixOperator $mo = null)
+    public function __construct(float $lambda, ?object $la=null)
     {
         $this->lambda = $lambda;
-        parent::__construct($mo);
+        parent::__construct(la:$la);
     }
 
     public function name(): string
@@ -31,7 +30,7 @@ class PhaseGate extends AbstractSingleQubitGate
 
     public function inverse(): self
     {
-        return new self(-$this->lambda, $this->mo);
+        return new self(-$this->lambda, la:$this->la);
     }
 
     protected function label(): string

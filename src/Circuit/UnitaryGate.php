@@ -6,7 +6,6 @@ namespace Rindow\Qubit\Circuit;
 use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
 use Rindow\Math\Matrix\Complex;
-use Rindow\Math\Matrix\MatrixOperator;
 use Rindow\Qubit\CircuitGate;
 use Rindow\Qubit\Math\LinearAlgebraProvider;
 use function Rindow\Math\Matrix\C;
@@ -21,7 +20,7 @@ class UnitaryGate implements CircuitGate
 
     public function __construct(
         array|NDArray $matrix,
-        ?object $la = null
+        ?object $la=null
     ) {
         $this->la = $la ?? LinearAlgebraProvider::get();
         $this->matrix = $this->normalizeMatrix($matrix);
@@ -87,7 +86,7 @@ class UnitaryGate implements CircuitGate
             $output = $control ? ($control | ($b << 1) | ($a << 2)) : $input;
             $matrix[$output * $dim + $input] = C(1.0, 0.0);
         }
-        return new self($matrix->reshape([$dim, $dim]));
+        return new self($matrix->reshape([$dim, $dim]), la:$la);
     }
 
     public function dimension(): int

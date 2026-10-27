@@ -5,7 +5,6 @@ namespace Rindow\Qubit\Circuit;
 
 use Interop\Polite\Math\Matrix\NDArray;
 use Rindow\Qubit\CircuitGate;
-use Rindow\Math\Matrix\MatrixOperator;
 use Rindow\Qubit\Math\LinearAlgebraProvider;
 
 abstract class AbstractMatrixGate implements CircuitGate

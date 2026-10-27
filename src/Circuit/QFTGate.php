@@ -6,7 +6,6 @@ namespace Rindow\Qubit\Circuit;
 use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
 use Rindow\Qubit\CircuitGate;
-use Rindow\Math\Matrix\MatrixOperator;
 use Rindow\Qubit\Math\LinearAlgebraProvider;
 use function Rindow\Math\Matrix\C;
 

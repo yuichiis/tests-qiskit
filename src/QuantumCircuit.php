@@ -47,6 +47,7 @@ class QuantumCircuit
 {
     use CircuitUtils;
 
+    private ?object $la;
     private int $numQubits;
     private int $numClbits;
     /** @var array<int,array{name:string,qubits:array<int>,params:array<mixed>|NDArray,clbits:array<int>}> */
@@ -56,8 +57,10 @@ class QuantumCircuit
     /** @var array<int,int> qubit => clbit の測定マップ */
     private array $measureMap = [];
 
-    public function __construct(int $numQubits, int $numClbits = 0)
+    public function __construct(int $numQubits, ?int $numClbits=null, ?object $la=null)
     {
+        $this->la = $la;
+        $numClbits ??= 0;
         if ($numQubits < 1 || $numQubits > 30) {
             throw new InvalidArgumentException('numQubits must be in [1, 30].');
         }
@@ -153,7 +156,7 @@ class QuantumCircuit
 
     public function h(int|array|\Traversable $qubit): static
     {
-        $gate = new HGate();
+        $gate = new HGate(la:$this->la);
         foreach (self::normalizeQubitList($qubit) as $q) {
             $this->append($gate, [(int)$q]);
         }
@@ -162,7 +165,7 @@ class QuantumCircuit
 
     public function x(int|array|\Traversable $qubit): static
     {
-        $gate = new XGate();
+        $gate = new XGate(la:$this->la);
         foreach (self::normalizeQubitList($qubit) as $q) {
             $this->append($gate, [(int)$q]);
         }
@@ -180,7 +183,7 @@ class QuantumCircuit
 
     public function z(int|array|\Traversable $qubit): static
     {
-        $gate = new ZGate();
+        $gate = new ZGate(la:$this->la);
         foreach (self::normalizeQubitList($qubit) as $q) {
             $this->append($gate, [(int)$q]);
         }
@@ -189,7 +192,7 @@ class QuantumCircuit
 
     public function s(int|array|\Traversable $qubit): static
     {
-        $gate = new SGate();
+        $gate = new SGate(la:$this->la);
         foreach (self::normalizeQubitList($qubit) as $q) {
             $this->append($gate, [(int)$q]);
         }
@@ -198,7 +201,7 @@ class QuantumCircuit
 
     public function sdg(int|array|\Traversable $qubit): static
     {
-        $gate = new SdgGate();
+        $gate = new SdgGate(la:$this->la);
         foreach (self::normalizeQubitList($qubit) as $q) {
             $this->append($gate, [(int)$q]);
         }
@@ -207,7 +210,7 @@ class QuantumCircuit
 
     public function t(int|array|\Traversable $qubit): static
     {
-        $gate = new TGate();
+        $gate = new TGate(la:$this->la);
         foreach (self::normalizeQubitList($qubit) as $q) {
             $this->append($gate, [(int)$q]);
         }
@@ -216,7 +219,7 @@ class QuantumCircuit
 
     public function tdg(int|array|\Traversable $qubit): static
     {
-        $gate = new TdgGate();
+        $gate = new TdgGate(la:$this->la);
         foreach (self::normalizeQubitList($qubit) as $q) {
             $this->append($gate, [(int)$q]);
         }
@@ -225,7 +228,7 @@ class QuantumCircuit
 
     public function id(int|array|\Traversable $qubit): static
     {
-        $gate = new IGate();
+        $gate = new IGate(la:$this->la);
         foreach (self::normalizeQubitList($qubit) as $q) {
             $this->append($gate, [(int)$q]);
         }
@@ -234,7 +237,7 @@ class QuantumCircuit
 
     public function rx(float $theta, int|array|\Traversable $qubit): static
     {
-        $gate = new RXGate($theta);
+        $gate = new RXGate($theta, la:$this->la);
         foreach (self::normalizeQubitList($qubit) as $q) {
             $this->append($gate, [(int)$q]);
         }
@@ -243,7 +246,7 @@ class QuantumCircuit
 
     public function ry(float $theta, int|array|\Traversable $qubit): static
     {
-        $gate = new RYGate($theta);
+        $gate = new RYGate($theta, la:$this->la);
         foreach (self::normalizeQubitList($qubit) as $q) {
             $this->append($gate, [(int)$q]);
         }
@@ -252,7 +255,7 @@ class QuantumCircuit
 
     public function rz(float $theta, int|array|\Traversable $qubit): static
     {
-        $gate = new RZGate($theta);
+        $gate = new RZGate($theta, la:$this->la);
         foreach (self::normalizeQubitList($qubit) as $q) {
             $this->append($gate, [(int)$q]);
         }
@@ -262,7 +265,7 @@ class QuantumCircuit
     /** Phase gate P(λ) == U1(λ) */
     public function p(float $lambda, int|array|\Traversable $qubit): static
     {
-        $gate = new PhaseGate($lambda);
+        $gate = new PhaseGate($lambda, la:$this->la);
         foreach (self::normalizeQubitList($qubit) as $q) {
             $this->append($gate, [(int)$q]);
         }
@@ -271,7 +274,7 @@ class QuantumCircuit
 
     public function u(float $theta, float $phi, float $lambda, int|array|\Traversable $qubit): static
     {
-        $gate = new UGate($theta, $phi, $lambda);
+        $gate = new UGate($theta, $phi, $lambda, la:$this->la);
         foreach (self::normalizeQubitList($qubit) as $q) {
             $this->append($gate, [(int)$q]);
         }
@@ -282,7 +285,7 @@ class QuantumCircuit
 
     public function cx(int|array|\Traversable $control, int|array|\Traversable $target): static
     {
-        $gate = new CXGate();
+        $gate = new CXGate(la:$this->la);
         foreach (self::expandTwoQubitArgs($control, $target) as [$c, $t]) {
             if ($c === $t) {
                 throw new InvalidArgumentException('Control and target must differ.');
@@ -300,7 +303,7 @@ class QuantumCircuit
 
     public function cz(int|array|\Traversable $control, int|array|\Traversable $target): static
     {
-        $gate = new CZGate();
+        $gate = new CZGate(la:$this->la);
         foreach (self::expandTwoQubitArgs($control, $target) as [$c, $t]) {
             if ($c === $t) {
                 throw new InvalidArgumentException('Control and target must differ.');
@@ -313,7 +316,7 @@ class QuantumCircuit
     /** Controlled-phase gate CP(θ) = diag(1,1,1,e^{iθ}) */
     public function cp(float $theta, int|array|\Traversable $control, int|array|\Traversable $target): static
     {
-        $gate = new CPhaseGate($theta);
+        $gate = new CPhaseGate($theta, la:$this->la);
         foreach (self::expandTwoQubitArgs($control, $target) as [$c, $t]) {
             if ($c === $t) {
                 throw new InvalidArgumentException('Control and target must differ.');
@@ -325,7 +328,7 @@ class QuantumCircuit
 
     public function swap(int|array|\Traversable $qubit1, int|array|\Traversable $qubit2): static
     {
-        $gate = new SwapGate();
+        $gate = new SwapGate(la:$this->la);
         foreach (self::expandTwoQubitArgs($qubit1, $qubit2) as [$a, $b]) {
             if ($a === $b) {
                 throw new InvalidArgumentException('Swap qubits must differ.');
@@ -346,7 +349,7 @@ class QuantumCircuit
     public function unitary(array|NDArray $matrix, int|array|\Traversable $qubit): static
     {
         $qlist = array_map('intval', self::normalizeQubitList($qubit));
-        $gate = new UnitaryGate($matrix);
+        $gate = new UnitaryGate($matrix, la:$this->la);
         if ($gate->dimension() === 2) {
             foreach ($qlist as $q) {
                 $this->append($gate, [$q]);
@@ -379,11 +382,6 @@ class QuantumCircuit
     }
 
     public function measureAll(): static
-    {
-        return $this->measure_all();
-    }
-
-    public function measure_all(): static
     {
         if ($this->numClbits < $this->numQubits) {
             $this->numClbits = $this->numQubits;

@@ -16,7 +16,7 @@ class CXGate extends AbstractTwoQubitGate
 
     public function inverse(): self
     {
-        return new self($this->mo);
+        return new self(la:$this->la);
     }
 
     public function draw(array $qubits): array

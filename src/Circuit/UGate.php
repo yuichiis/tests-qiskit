@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace Rindow\Qubit\Circuit;
 
 use Interop\Polite\Math\Matrix\NDArray;
-use Rindow\Math\Matrix\MatrixOperator;
 use function Rindow\Math\Matrix\C;
 
 class UGate extends AbstractSingleQubitGate
@@ -15,12 +14,12 @@ class UGate extends AbstractSingleQubitGate
     private float $phi;
     private float $lambda;
 
-    public function __construct(float $theta, float $phi, float $lambda, ?MatrixOperator $mo = null)
+    public function __construct(float $theta, float $phi, float $lambda, ?object $la=null)
     {
         $this->theta = $theta;
         $this->phi = $phi;
         $this->lambda = $lambda;
-        parent::__construct($mo);
+        parent::__construct(la:$la);
     }
 
     public function name(): string
@@ -45,7 +44,7 @@ class UGate extends AbstractSingleQubitGate
 
     public function inverse(): self
     {
-        return new self(-$this->theta, -$this->lambda, -$this->phi, $this->mo);
+        return new self(-$this->theta, -$this->lambda, -$this->phi, la:$this->la);
     }
 
     protected function label(): string

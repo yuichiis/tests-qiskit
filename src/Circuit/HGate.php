@@ -16,7 +16,7 @@ class HGate extends AbstractSingleQubitGate
 
     public function inverse(): self
     {
-        return new self($this->mo);
+        return new self(la:$this->la);
     }
 
     protected function buildMatrix(): NDArray
