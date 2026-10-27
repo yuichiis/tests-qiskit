@@ -7,6 +7,7 @@ use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Rindow\Qubit\Circuit\AbstractMatrixGate;
 use Rindow\Qubit\Circuit\UnitaryGate;
 use Rindow\Qubit\Math\LinearAlgebraProvider;
 use Rindow\Math\Matrix\Complex;
@@ -20,6 +21,7 @@ class UnitaryGateTest extends TestCase
     {
         $gate = new UnitaryGate([[0, 1], [1, 0]]);
 
+        $this->assertInstanceOf(AbstractMatrixGate::class, $gate);
         $this->assertSame('unitary', $gate->name());
         $this->assertSame(2, $gate->dimension());
         $this->assertGateMatrix($gate, [[0, 1], [1, 0]]);

@@ -5,19 +5,14 @@ namespace Rindow\Qubit\Circuit;
 
 use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
-use Rindow\Qubit\CircuitGate;
-use Rindow\Qubit\Math\LinearAlgebraProvider;
 use function Rindow\Math\Matrix\C;
 
-class MCXGate implements CircuitGate
+class MCXGate extends AbstractMatrixGate
 {
     public const NAME = 'mcx';
 
     private int $numCtrlQubits;
     private int $ctrlState;
-    /** @var NDArray complex64, shape [dim, dim], row-major. */
-    private NDArray $matrix;
-    private object $la;
 
     public function __construct(
         int $numCtrlQubits,
@@ -27,10 +22,9 @@ class MCXGate implements CircuitGate
         if ($numCtrlQubits < 1 || $numCtrlQubits > 29) {
             throw new InvalidArgumentException('numCtrlQubits must be in [1, 29].');
         }
-        $this->la = $la ?? LinearAlgebraProvider::get();
         $this->numCtrlQubits = $numCtrlQubits;
         $this->ctrlState = self::normalizeCtrlState($ctrlState, $numCtrlQubits);
-        $this->matrix = $this->buildMatrix();
+        parent::__construct($la);
     }
 
     public function name(): string
@@ -69,31 +63,7 @@ class MCXGate implements CircuitGate
         return $this->ctrlState;
     }
 
-    public function dimension(): int
-    {
-        return $this->matrix->shape()[0];
-    }
-
-    /** @return NDArray complex64, shape [dim, dim] */
-    public function matrix(): NDArray
-    {
-        return $this->matrix;
-    }
-
-    /** @return array<object{real:float,imag:float}> Row-major complex numbers. */
-    public function parameters(): array
-    {
-        $dim = $this->dimension();
-        $flat = $this->matrix->reshape([$dim * $dim]);
-        $out = [];
-        for ($i = 0; $i < $dim * $dim; $i++) {
-            $c = $flat[$i];
-            $out[] = (object)['real' => (float)$c->real, 'imag' => (float)$c->imag];
-        }
-        return $out;
-    }
-
-    private function buildMatrix(): NDArray
+    protected function buildMatrix(): NDArray
     {
         $dim = 1 << $this->numQubits();
         $targetBit = 1 << $this->numCtrlQubits;

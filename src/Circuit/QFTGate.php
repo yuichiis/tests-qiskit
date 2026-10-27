@@ -5,20 +5,15 @@ namespace Rindow\Qubit\Circuit;
 
 use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
-use Rindow\Qubit\CircuitGate;
-use Rindow\Qubit\Math\LinearAlgebraProvider;
 use function Rindow\Math\Matrix\C;
 
-class QFTGate implements CircuitGate
+class QFTGate extends AbstractMatrixGate
 {
     public const NAME = 'qft';
     public const NAME_INVERSE = 'qft_dg';
 
     private int $numQubits;
     private bool $inverse = false;
-    /** @var NDArray complex64, shape [dim, dim], row-major. */
-    private NDArray $matrix;
-    private object $la;
 
     public function __construct(
         int $numQubits,
@@ -27,16 +22,15 @@ class QFTGate implements CircuitGate
         if ($numQubits < 1 || $numQubits > 30) {
             throw new InvalidArgumentException('numQubits must be in [1, 30].');
         }
-        $this->la = $la ?? LinearAlgebraProvider::get();
         $this->numQubits = $numQubits;
-        $this->matrix = $this->buildMatrix(false);
+        parent::__construct($la);
     }
 
     public function inverse(): self
     {
         $inverse = clone $this;
         $inverse->inverse = !$this->inverse;
-        $inverse->matrix = $inverse->buildMatrix($inverse->inverse);
+        $inverse->matrix = $inverse->buildMatrix();
         return $inverse;
     }
 
@@ -69,35 +63,11 @@ class QFTGate implements CircuitGate
         return $this->numQubits;
     }
 
-    public function dimension(): int
-    {
-        return $this->matrix->shape()[0];
-    }
-
-    /** @return NDArray complex64, shape [dim, dim] */
-    public function matrix(): NDArray
-    {
-        return $this->matrix;
-    }
-
-    /** @return array<object{real:float,imag:float}> Row-major complex numbers. */
-    public function parameters(): array
-    {
-        $dim = $this->dimension();
-        $flat = $this->matrix->reshape([$dim * $dim]);
-        $out = [];
-        for ($i = 0; $i < $dim * $dim; $i++) {
-            $c = $flat[$i];
-            $out[] = (object)['real' => (float)$c->real, 'imag' => (float)$c->imag];
-        }
-        return $out;
-    }
-
-    private function buildMatrix(bool $inverse): NDArray
+    protected function buildMatrix(): NDArray
     {
         $dim = 1 << $this->numQubits;
         $scale = 1.0 / sqrt((float)$dim);
-        $sign = $inverse ? -1.0 : 1.0;
+        $sign = $this->inverse ? -1.0 : 1.0;
         $flat = $this->la->zeros([$dim * $dim], NDArray::complex64);
         for ($j = 0; $j < $dim; $j++) {
             for ($k = 0; $k < $dim; $k++) {

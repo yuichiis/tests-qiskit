@@ -5,6 +5,7 @@ namespace RindowTest\Qubit\Circuit;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
+use Rindow\Qubit\Circuit\AbstractMatrixGate;
 use Rindow\Qubit\Circuit\QFTGate;
 use RindowTest\Qubit\TestUtils;
 
@@ -18,6 +19,7 @@ class QFTGateTest extends TestCase
         $s = 1.0 / sqrt(2.0);
 
         $this->assertSame('qft', $gate->name());
+        $this->assertInstanceOf(AbstractMatrixGate::class, $gate);
         $this->assertSame(1, $gate->numQubits());
         $this->assertSame(2, $gate->dimension());
         $this->assertFalse($gate->isInverse());

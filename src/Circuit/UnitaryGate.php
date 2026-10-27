@@ -6,24 +6,21 @@ namespace Rindow\Qubit\Circuit;
 use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
 use Rindow\Math\Matrix\Complex;
-use Rindow\Qubit\CircuitGate;
 use Rindow\Qubit\Math\LinearAlgebraProvider;
 use function Rindow\Math\Matrix\C;
 
-class UnitaryGate implements CircuitGate
+class UnitaryGate extends AbstractMatrixGate
 {
     public const NAME = 'unitary';
 
-    /** @var NDArray complex64, shape [dim, dim], row-major. */
-    private NDArray $matrix;
-    private object $la;
+    private array|NDArray $sourceMatrix;
 
     public function __construct(
         array|NDArray $matrix,
         ?object $la=null
     ) {
-        $this->la = $la ?? LinearAlgebraProvider::get();
-        $this->matrix = $this->normalizeMatrix($matrix);
+        $this->sourceMatrix = $matrix;
+        parent::__construct($la);
     }
 
     public function name(): string
@@ -89,28 +86,9 @@ class UnitaryGate implements CircuitGate
         return new self($matrix->reshape([$dim, $dim]), la:$la);
     }
 
-    public function dimension(): int
+    protected function buildMatrix(): NDArray
     {
-        return $this->matrix->shape()[0];
-    }
-
-    /** @return NDArray complex64, shape [dim, dim] */
-    public function matrix(): NDArray
-    {
-        return $this->matrix;
-    }
-
-    /** @return array<object{real:float,imag:float}> Row-major complex numbers. */
-    public function parameters(): array
-    {
-        $dim = $this->dimension();
-        $flat = $this->matrix->reshape([$dim * $dim]);
-        $out = [];
-        for ($i = 0; $i < $dim * $dim; $i++) {
-            $c = $flat[$i];
-            $out[] = (object)['real' => (float)$c->real, 'imag' => (float)$c->imag];
-        }
-        return $out;
+        return $this->normalizeMatrix($this->sourceMatrix);
     }
 
     private function normalizeMatrix(array|NDArray $matrix): NDArray

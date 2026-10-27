@@ -6,6 +6,7 @@ namespace RindowTest\Qubit\Circuit;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Rindow\Qubit\Circuit\AbstractMatrixGate;
 use Rindow\Qubit\Circuit\MCPhaseGate;
 use Rindow\Qubit\Circuit\MCXGate;
 use RindowTest\Qubit\TestUtils;
@@ -18,6 +19,7 @@ class MultiControlledGateTest extends TestCase
     {
         $gate = new MCXGate(1);
 
+        $this->assertInstanceOf(AbstractMatrixGate::class, $gate);
         $this->assertSame('mcx', $gate->name());
         $this->assertSame(1, $gate->numCtrlQubits());
         $this->assertSame(2, $gate->numQubits());
@@ -78,6 +80,7 @@ class MultiControlledGateTest extends TestCase
         $lambda = M_PI / 3.0;
         $gate = new MCPhaseGate($lambda, 1);
 
+        $this->assertInstanceOf(AbstractMatrixGate::class, $gate);
         $this->assertSame('mcphase', $gate->name());
         $this->assertSame(1, $gate->numCtrlQubits());
         $this->assertSame(2, $gate->numQubits());
