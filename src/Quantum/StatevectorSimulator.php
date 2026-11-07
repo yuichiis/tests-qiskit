@@ -27,13 +27,17 @@ use Rindow\Qubit\CircuitGate;
 use Rindow\Qubit\QuantumCircuit;
 use Rindow\Qubit\Math\IntMath;
 use Rindow\Qubit\Math\LinearAlgebraProvider;
+use Rindow\Qubit\Math\Precision;
 use function Rindow\Math\Matrix\C;
 
 /**
  * Rindow NDArray + BLAS 対応の状態ベクトルシミュレータ.
  * qubit 0 = LSB (Qiskit規約) で状態を保持する.
  *
- * 内部表現は complex64 NDArray x1: shape [dim]。
+ * 内部表現は component-wise な NDArray x1: shape [dim]。
+ * dtype はコンストラクタで省略すると Precision::complexDtype() を使う
+ * (既定は complex128)。float64 非対応の OpenCL 環境では、計算前に
+ * Precision::set(NDArray::float32) で complex64 に切り替える。
  * rindow-matlib の transpose が複素数の共役なし転置で
  * N次元対応になったため、1/2qubitゲートとも転置+gemm各1発で書ける。
  * test.php の流儀 (LinearAlgebra::gemm 等) に沿う。
@@ -51,19 +55,26 @@ class StatevectorSimulator
     private int $numQubits;
     private int $dim;
     private object $la;
+    private int $dtype;
     private NDArray $state;
 
     public function __construct(
         int $numQubits,
-        ?object $la=null
+        ?object $la=null,
+        ?int $dtype=null,
     ) {
         if ($numQubits < 1 || $numQubits > 30) {
             throw new InvalidArgumentException('numQubits must be in [1, 30].');
         }
+        $dtype ??= Precision::complexDtype();
+        if ($dtype !== NDArray::complex64 && $dtype !== NDArray::complex128) {
+            throw new InvalidArgumentException('dtype must be complex64 or complex128.');
+        }
         $this->numQubits = $numQubits;
         $this->dim = 1 << $numQubits;
         $this->la = $la ?? LinearAlgebraProvider::get();
-        $this->state = $this->la->zeros([$this->dim], NDArray::complex64);
+        $this->dtype = $dtype;
+        $this->state = $this->la->zeros([$this->dim], $this->dtype);
         $this->state[0] = C(1, 0);
     }
 
@@ -206,13 +217,15 @@ class StatevectorSimulator
     {
         $U = $matrix instanceof NDArray
             ? $matrix
-            : $this->la->array($matrix, dtype: NDArray::complex64);
+            : $this->la->array($matrix, dtype: $this->dtype);
         $shape = $U->shape();
         if (count($shape) !== 2 || $shape[0] !== $shape[1]) {
             throw new InvalidArgumentException('Gate matrix must be a square 2D matrix.');
         }
-        if ($U->dtype() !== NDArray::complex64) {
-            $U = $this->la->array($U->toArray(), dtype: NDArray::complex64);
+        if ($U->dtype() !== $this->dtype) {
+            // matlib の astype は complex64<->complex128 に未対応のため
+            // いったん PHP 配列経由で変換する。
+            $U = $this->la->array($U->toArray(), dtype: $this->dtype);
         }
         return $U;
     }
@@ -314,7 +327,7 @@ class StatevectorSimulator
     {
         [$L, $M, $H] = $this->twoQubitDims($qb, $qa);
         $la = $this->la;
-        $U = $la->array($mat, dtype: NDArray::complex64);
+        $U = $la->array($mat, dtype: $this->dtype);
         $N = $H * $M * $L;
         // [H,qb,M,qa,L] -> [H,M,L,qb,qa] -> [N,4]
         $flat = $la->transpose(
@@ -445,7 +458,7 @@ class StatevectorSimulator
         return $out;
     }
 
-    /** @return NDArray 計算基底の確率 (float64, shape [dim]) */
+    /** @return NDArray 計算基底の確率 (Precision::realDtype(), shape [dim]) */
     public function getProbabilities(): NDArray
     {
         // test.php の流儀: probs = square(abs(psi))

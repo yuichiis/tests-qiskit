@@ -41,6 +41,6 @@ class RYGate extends AbstractSingleQubitGate
     {
         $c = cos($this->theta / 2.0);
         $s = sin($this->theta / 2.0);
-        return $this->la->array([[$c, -$s], [$s, $c]], dtype: NDArray::complex64);
+        return $this->la->array([[$c, -$s], [$s, $c]], dtype: $this->complexDtype());
     }
 }

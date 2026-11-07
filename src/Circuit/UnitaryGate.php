@@ -7,6 +7,7 @@ use InvalidArgumentException;
 use Interop\Polite\Math\Matrix\NDArray;
 use Rindow\Math\Matrix\Complex;
 use Rindow\Qubit\Math\LinearAlgebraProvider;
+use Rindow\Qubit\Math\Precision;
 use function Rindow\Math\Matrix\C;
 
 class UnitaryGate extends AbstractMatrixGate
@@ -50,7 +51,7 @@ class UnitaryGate extends AbstractMatrixGate
         $dim = $this->dimension();
         $controlDim = 1 << $numControls;
         $size = $dim * $controlDim;
-        $out = $this->la->zeros([$size * $size], NDArray::complex64);
+        $out = $this->la->zeros([$size * $size], $this->complexDtype());
         $src = $this->matrix->reshape([$dim * $dim]);
         for ($row = 0; $row < $size; $row++) {
             for ($col = 0; $col < $size; $col++) {
@@ -75,7 +76,7 @@ class UnitaryGate extends AbstractMatrixGate
     {
         $la = LinearAlgebraProvider::get();
         $dim = 8;
-        $matrix = $la->zeros([$dim * $dim], NDArray::complex64);
+        $matrix = $la->zeros([$dim * $dim], Precision::complexDtype());
         for ($input = 0; $input < $dim; $input++) {
             $control = $input & 1;
             $a = ($input >> 1) & 1;
@@ -99,8 +100,8 @@ class UnitaryGate extends AbstractMatrixGate
                 throw new InvalidArgumentException('unitary() requires an NxN matrix (N=2^k).');
             }
             $this->checkDimension($shape[0]);
-            if ($matrix->dtype() !== NDArray::complex64) {
-                return $this->la->array($matrix->toArray(), dtype: NDArray::complex64);
+            if ($matrix->dtype() !== $this->complexDtype()) {
+                return $this->la->array($matrix->toArray(), dtype: $this->complexDtype());
             }
             return $matrix;
         }
@@ -108,7 +109,7 @@ class UnitaryGate extends AbstractMatrixGate
         $rows = array_values($matrix);
         $dim = count($rows);
         $this->checkDimension($dim);
-        $flat = $this->la->zeros([$dim * $dim], NDArray::complex64);
+        $flat = $this->la->zeros([$dim * $dim], $this->complexDtype());
         $idx = 0;
         foreach ($rows as $row) {
             if (!is_array($row) || count($row) !== $dim) {

@@ -603,9 +603,14 @@ class QuantumCircuit
             default => $op['name'],
         };
         if (in_array($op['name'], ['rx', 'ry', 'rz', 'p'], true)) {
-            $label .= sprintf('(%.3g)', $op['params'][0]);
+            $label .= '(' . $this->formatParam($op['params'][0]) . ')';
         } elseif ($op['name'] === 'u') {
-            $label .= sprintf('(%.3g,%.3g,%.3g)', $op['params'][0], $op['params'][1], $op['params'][2]);
+            $label .= sprintf(
+                '(%s,%s,%s)',
+                $this->formatParam($op['params'][0]),
+                $this->formatParam($op['params'][1]),
+                $this->formatParam($op['params'][2]),
+            );
         }
         $qs = $op['qubits'];
         $contrib = [];
@@ -666,6 +671,15 @@ class QuantumCircuit
             $span = array_values($qs);
         }
         return ['cells' => $contrib, 'span' => $span, 'clbits' => $clbits, 'barrier' => $barrier];
+    }
+
+    /** パラメータ表示. 記号パラメータ (θ[0] など) はそのまま表示する. */
+    private function formatParam(mixed $param): string
+    {
+        if (is_string($param)) {
+            return $param;
+        }
+        return sprintf('%.3g', (float)$param);
     }
 
     private static function displayWidth(string $s): int

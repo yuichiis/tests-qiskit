@@ -44,7 +44,7 @@ class RXGate extends AbstractSingleQubitGate
         $s = sin($this->theta / 2.0);
         return $this->la->array(
             [[$c, C(0.0, -$s)], [C(0.0, -$s), $c]],
-            dtype: NDArray::complex64
+            dtype: $this->complexDtype()
         );
     }
 }

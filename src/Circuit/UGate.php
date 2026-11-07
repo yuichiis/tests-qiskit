@@ -62,6 +62,6 @@ class UGate extends AbstractSingleQubitGate
                 C($s * cos($this->phi), $s * sin($this->phi)),
                 C($c * cos($this->phi + $this->lambda), $c * sin($this->phi + $this->lambda)),
             ],
-        ], dtype: NDArray::complex64);
+        ], dtype: $this->complexDtype());
     }
 }

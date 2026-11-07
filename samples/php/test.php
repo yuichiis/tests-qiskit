@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/../../vendor/autoload.php';
 use Rindow\Math\Matrix\MatrixOperator;
-use Interop\Polite\Math\Matrix\NDArray;
+use Rindow\Qubit\Math\Precision;
 use function Rindow\Math\Matrix\C;
 
 $mo = new MatrixOperator();
@@ -29,11 +29,11 @@ function toComplexMatrix($m, $la) {
         foreach($row as $v){ $r[]=C($v,0); }
         $rows[]=$r;
     }
-    return $la->array($rows, dtype: NDArray::complex64);
+    return $la->array($rows, dtype: Precision::complexDtype());
 }
 $Hf = toComplexMatrix($H_full,$la);
 
-$psi0 = $la->array([C(1,0),C(0,0),C(0,0),C(0,0)], dtype: NDArray::complex64); // |00>
+$psi0 = $la->array([C(1,0),C(0,0),C(0,0),C(0,0)], dtype: Precision::complexDtype()); // |00>
 
 $psi1 = $la->gemv($Hf, $psi0);
 echo "After H(q0): ".$la->toString($psi1)."\n";
@@ -45,21 +45,12 @@ $CNOT = [
     [0,0,0,1],
     [0,0,1,0],
 ];
-$Cf = toComplexMatrix($CNOT,$mo);
+$Cf = toComplexMatrix($CNOT,$la);
 $psi2 = $la->gemv($Cf, $psi1);
 echo "After CNOT: ".$la->toString($psi2)."\n";
 
-// |amplitude|^2 は la->abs() が complex64 未対応だったため、
-// ArrayAccessで real/imag を直接取り出して手計算
-//$probs=[];
-//for($i=0;$i<4;$i++){
-//    $c = $psi2[$i];
-//    $probs[] = $c->real*$c->real + $c->imag*$c->imag;
-//}
-//print_r($probs);
-
 // 確率分布からのショットサンプリング(測定)
-//$probsArr = $la->array($probs, dtype: NDArray::float64);
+// randomCategorical には対数確率 (log p = 2 log|ψ|) を渡す。
 $probsArr = $la->scal(2.0, $la->log($la->abs($psi2)));
 echo $la->toString($probsArr)."\n";
 $samples = $la->randomCategorical($probsArr, numSamples: 1024);

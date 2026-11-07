@@ -31,6 +31,6 @@ class CZGate extends AbstractTwoQubitGate
             [0, 1, 0, 0],
             [0, 0, 1, 0],
             [0, 0, 0, -1],
-        ], dtype: NDArray::complex64);
+        ], dtype: $this->complexDtype());
     }
 }

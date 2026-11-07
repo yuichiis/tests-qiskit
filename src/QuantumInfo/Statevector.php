@@ -5,14 +5,22 @@ namespace Rindow\Qubit\QuantumInfo;
 
 use Countable;
 use InvalidArgumentException;
+use Interop\Polite\Math\Matrix\NDArray;
 use IteratorAggregate;
 use Rindow\Qubit\Math\IntMath;
+use Rindow\Qubit\Math\LinearAlgebraProvider;
+use Rindow\Qubit\Math\Precision;
 use Rindow\Qubit\Quantum\StatevectorSimulator;
 use Rindow\Qubit\QuantumCircuit;
 use Traversable;
+use function Rindow\Math\Matrix\C;
 
 /**
  * qiskit.quantum_info.Statevector のPHP版.
+ *
+ * 内部では NDArray を保持し、シミュレータから受け取った状態ベクトルを
+ * PHP の float に戻さずに BLAS 演算へ渡せる。PHP 配列が必要なときだけ
+ * data() / getStatevector() で遅延変換する。
  *
  * ```php
  * use Rindow\Qubit\QuantumInfo\Statevector;
@@ -21,18 +29,21 @@ use Traversable;
  */
 class Statevector implements IteratorAggregate, Countable
 {
-    /** @var array<int,object{real:float,imag:float}> */
-    private array $statevector;
+    /** @var array<int,object{real:float,imag:float}>|null 遅延変換キャッシュ */
+    private ?array $statevector = null;
+    private ?NDArray $ndarray = null;
     private int $numQubits;
     private int $dim;
 
     /**
-     * @param QuantumCircuit|StatevectorSimulator|Statevector|array<int,object{real:float,imag:float}> $data
+     * @param QuantumCircuit|StatevectorSimulator|Statevector|NDArray|array<int,object{real:float,imag:float}> $data
      */
-    public function __construct(QuantumCircuit|StatevectorSimulator|Statevector|array $data)
-    {
+    public function __construct(
+        QuantumCircuit|StatevectorSimulator|Statevector|NDArray|array $data
+    ) {
         if ($data instanceof self) {
             $this->statevector = $data->statevector;
+            $this->ndarray = $data->ndarray;
             $this->numQubits = $data->numQubits;
             $this->dim = $data->dim;
             return;
@@ -40,26 +51,77 @@ class Statevector implements IteratorAggregate, Countable
         if ($data instanceof QuantumCircuit) {
             $sim = new StatevectorSimulator($data->numQubits());
             $sim->applyCircuit($data);
-            $this->statevector = $sim->getStatevector();
+            $this->ndarray = $this->copyNDArray($sim->stateNDArray());
             $this->numQubits = $data->numQubits();
             $this->dim = 1 << $this->numQubits;
             return;
         }
         if ($data instanceof StatevectorSimulator) {
-            $this->statevector = $data->getStatevector();
+            $this->ndarray = $this->copyNDArray($data->stateNDArray());
             $this->numQubits = $data->numQubits();
             $this->dim = $data->dimension();
             return;
         }
+        if ($data instanceof NDArray) {
+            $shape = $data->shape();
+            if (count($shape) !== 1) {
+                throw new InvalidArgumentException(
+                    'The statevector NDArray must be one-dimensional.'
+                );
+            }
+            $dim = $shape[0];
+            $this->assertDimension($dim);
+            $this->ndarray = $this->copyNDArray($data);
+            $this->dim = $dim;
+            $this->numQubits = (int)round(log($dim, 2));
+            return;
+        }
         $dim = count($data);
+        $this->assertDimension($dim);
+        $this->statevector = array_values($data);
+        $this->dim = $dim;
+        $this->numQubits = (int)round(log($dim, 2));
+    }
+
+    private function assertDimension(int $dim): void
+    {
         if ($dim < 1 || ($dim & ($dim - 1)) !== 0) {
             throw new InvalidArgumentException(
                 'The length of the statevector must be a power of two.'
             );
         }
-        $this->statevector = array_values($data);
-        $this->dim = $dim;
-        $this->numQubits = (int)round(log($dim, 2));
+    }
+
+    private function copyNDArray(NDArray $state): NDArray
+    {
+        $la = LinearAlgebraProvider::get();
+        if ($state->dtype() !== NDArray::complex64
+            && $state->dtype() !== NDArray::complex128) {
+            throw new InvalidArgumentException(
+                'The statevector NDArray must have a complex dtype.'
+            );
+        }
+        return $la->copy($state);
+    }
+
+    /**
+     * 内部 NDArray を返す. 変換が必要な場合だけ PHP 配列から構築する.
+     */
+    public function ndarray(): NDArray
+    {
+        if ($this->ndarray !== null) {
+            return $this->ndarray;
+        }
+        $la = LinearAlgebraProvider::get();
+        $values = [];
+        foreach ($this->statevector as $amp) {
+            $values[] = C(
+                (float)($amp->real ?? 0.0),
+                (float)($amp->imag ?? 0.0),
+            );
+        }
+        $this->ndarray = $la->array($values, dtype: Precision::complexDtype());
+        return $this->ndarray;
     }
 
     /**
@@ -67,7 +129,7 @@ class Statevector implements IteratorAggregate, Countable
      */
     public function getStatevector(): array
     {
-        return $this->statevector;
+        return $this->toPhpArray();
     }
 
     /**
@@ -75,7 +137,29 @@ class Statevector implements IteratorAggregate, Countable
      */
     public function data(): array
     {
-        return $this->statevector;
+        return $this->toPhpArray();
+    }
+
+    /**
+     * @return array<int,object{real:float,imag:float}>
+     */
+    private function toPhpArray(): array
+    {
+        if ($this->statevector !== null) {
+            return $this->statevector;
+        }
+        $la = LinearAlgebraProvider::get();
+        $flat = $this->ndarray->reshape([$this->dim]);
+        $out = [];
+        for ($i = 0; $i < $this->dim; $i++) {
+            $value = $la->scalar($flat[$i]);
+            $out[] = (object)[
+                'real' => (float)$value->real,
+                'imag' => (float)$value->imag,
+            ];
+        }
+        $this->statevector = $out;
+        return $out;
     }
 
     /**
@@ -83,7 +167,7 @@ class Statevector implements IteratorAggregate, Countable
      */
     public function getIterator(): Traversable
     {
-        return new \ArrayIterator($this->statevector);
+        return new \ArrayIterator($this->toPhpArray());
     }
 
     public function count(): int
@@ -120,12 +204,16 @@ class Statevector implements IteratorAggregate, Countable
      */
     public function probabilities(?array $qargs = null, ?int $decimals = null): array
     {
+        $la = LinearAlgebraProvider::get();
+        // |ψ|^2 は NDArray 内で計算し、PHP へは確率配列だけを取り出す。
+        $probs = $la->square($la->abs($this->ndarray()))
+            ->reshape([$this->dim])
+            ->toArray();
+
         if ($qargs === null) {
-            $probs = [];
-            foreach ($this->statevector as $amp) {
-                $prob = $this->amplitudeProbability($amp);
-                $prob = min(1.0, max(0.0, $prob));
-                $probs[] = $decimals === null ? $prob : round($prob, $decimals);
+            foreach ($probs as $i => $prob) {
+                $prob = min(1.0, max(0.0, (float)$prob));
+                $probs[$i] = $decimals === null ? $prob : round($prob, $decimals);
             }
             return $probs;
         }
@@ -145,19 +233,19 @@ class Statevector implements IteratorAggregate, Countable
             $seen[$q] = true;
         }
 
-        $probs = array_fill(0, 1 << count($qargs), 0.0);
-        foreach ($this->statevector as $index => $amp) {
+        $out = array_fill(0, 1 << count($qargs), 0.0);
+        foreach ($probs as $index => $prob) {
             $target = 0;
             foreach ($qargs as $position => $q) {
                 $target |= ((($index >> $q) & 1) << $position);
             }
-            $probs[$target] += $this->amplitudeProbability($amp);
+            $out[$target] += (float)$prob;
         }
-        foreach ($probs as $i => $prob) {
+        foreach ($out as $i => $prob) {
             $prob = min(1.0, max(0.0, $prob));
-            $probs[$i] = $decimals === null ? $prob : round($prob, $decimals);
+            $out[$i] = $decimals === null ? $prob : round($prob, $decimals);
         }
-        return $probs;
+        return $out;
     }
 
     /**
@@ -187,15 +275,5 @@ class Statevector implements IteratorAggregate, Countable
     public function probabilities_dict(?array $qargs = null, ?int $decimals = null): array
     {
         return $this->probabilitiesDict($qargs, $decimals);
-    }
-
-    /**
-     * @param object{real:float,imag:float} $amp
-     */
-    private function amplitudeProbability(object $amp): float
-    {
-        $real = (float)$amp->real;
-        $imag = (float)$amp->imag;
-        return $real * $real + $imag * $imag;
     }
 }

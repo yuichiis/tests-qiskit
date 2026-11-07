@@ -68,7 +68,7 @@ class QFTGate extends AbstractMatrixGate
         $dim = 1 << $this->numQubits;
         $scale = 1.0 / sqrt((float)$dim);
         $sign = $this->inverse ? -1.0 : 1.0;
-        $flat = $this->la->zeros([$dim * $dim], NDArray::complex64);
+        $flat = $this->la->zeros([$dim * $dim], $this->complexDtype());
         for ($j = 0; $j < $dim; $j++) {
             for ($k = 0; $k < $dim; $k++) {
                 $angle = $sign * 2.0 * M_PI * $j * $k / $dim;

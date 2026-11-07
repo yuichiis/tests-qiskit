@@ -31,6 +31,6 @@ class CXGate extends AbstractTwoQubitGate
             [0, 0, 0, 1],
             [0, 0, 1, 0],
             [0, 1, 0, 0],
-        ], dtype: NDArray::complex64);
+        ], dtype: $this->complexDtype());
     }
 }

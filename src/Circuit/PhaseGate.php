@@ -42,7 +42,7 @@ class PhaseGate extends AbstractSingleQubitGate
     {
         return $this->la->array(
             [[1, 0], [0, C(cos($this->lambda), sin($this->lambda))]],
-            dtype: NDArray::complex64
+            dtype: $this->complexDtype()
         );
     }
 }

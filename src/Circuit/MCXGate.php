@@ -68,7 +68,7 @@ class MCXGate extends AbstractMatrixGate
         $dim = 1 << $this->numQubits();
         $targetBit = 1 << $this->numCtrlQubits;
         $controlMask = $targetBit - 1;
-        $flat = $this->la->zeros([$dim * $dim], NDArray::complex64);
+        $flat = $this->la->zeros([$dim * $dim], $this->complexDtype());
         for ($input = 0; $input < $dim; $input++) {
             $output = $input;
             if (($input & $controlMask) === $this->ctrlState) {

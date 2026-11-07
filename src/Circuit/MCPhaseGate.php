@@ -82,7 +82,7 @@ class MCPhaseGate extends AbstractMatrixGate
         $targetBit = 1 << $this->numCtrlQubits;
         $controlMask = $targetBit - 1;
         $phase = C(cos($this->lambda), sin($this->lambda));
-        $flat = $this->la->zeros([$dim * $dim], NDArray::complex64);
+        $flat = $this->la->zeros([$dim * $dim], $this->complexDtype());
         for ($input = 0; $input < $dim; $input++) {
             $value = C(1.0, 0.0);
             if (($input & $controlMask) === $this->ctrlState && ($input & $targetBit) !== 0) {

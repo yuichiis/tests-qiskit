@@ -21,6 +21,6 @@ class IGate extends AbstractSingleQubitGate
 
     protected function buildMatrix(): NDArray
     {
-        return $this->la->array([[1, 0], [0, 1]], dtype: NDArray::complex64);
+        return $this->la->array([[1, 0], [0, 1]], dtype: $this->complexDtype());
     }
 }

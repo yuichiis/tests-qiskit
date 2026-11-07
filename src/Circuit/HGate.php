@@ -24,7 +24,7 @@ class HGate extends AbstractSingleQubitGate
         $s = 1.0 / sqrt(2.0);
         return $this->la->array(
             [[$s, $s], [$s, -$s]],
-            dtype: NDArray::complex64
+            dtype: $this->complexDtype()
         );
     }
 }

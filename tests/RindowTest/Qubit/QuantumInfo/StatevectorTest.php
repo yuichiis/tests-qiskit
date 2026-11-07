@@ -219,4 +219,26 @@ class StatevectorTest extends TestCase
         $this->assertSame([1 => 1.0], $statevector->probabilitiesDict([0]));
         $this->assertSame([0 => 1.0], $statevector->probabilitiesDict([1]));
     }
+
+    public function testNDArrayBackedStatevector(): void
+    {
+        $sim = new StatevectorSimulator(2);
+        $sim->applyOperation('h', [0]);
+        $sim->applyCx(0, 1);
+
+        $statevector = new Statevector($sim);
+        $ndarray = $statevector->ndarray();
+
+        $this->assertSame(
+            \Interop\Polite\Math\Matrix\NDArray::complex128,
+            $ndarray->dtype()
+        );
+        $this->assertSame([4], $ndarray->shape());
+        // PHP 配列へ戻した値と NDArray の値が一致すること。
+        $this->assertCount(4, $statevector->getStatevector());
+        $this->assertFloatVectorEquals(
+            [0.5, 0.0, 0.0, 0.5],
+            $statevector->probabilities()
+        );
+    }
 }
