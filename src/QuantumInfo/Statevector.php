@@ -197,6 +197,26 @@ class Statevector implements IteratorAggregate, Countable
     }
 
     /**
+     * |ψ><ψ| を密度行列として返す.
+     */
+    public function densityMatrix(): DensityMatrix
+    {
+        return DensityMatrix::fromStatevector($this);
+    }
+
+    /** @param array<int>|null $qargs 残す qubit. nullなら全qubit. */
+    public function reducedDensityMatrix(?array $qargs = null): DensityMatrix
+    {
+        return DensityMatrix::fromStatevector($this, $qargs);
+    }
+
+    /** @param array<int>|null $qargs 残す qubit. nullなら全qubit. */
+    public function reduced_density_matrix(?array $qargs = null): DensityMatrix
+    {
+        return $this->reducedDensityMatrix($qargs);
+    }
+
+    /**
      * 計算基底の測定確率を返す.
      *
      * @param array<int>|null $qargs 部分系のqubitリスト. nullなら全qubit.

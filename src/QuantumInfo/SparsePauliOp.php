@@ -238,10 +238,14 @@ class SparsePauliOp
      * 行列ベクトル積 (hpmv) と複素内積 (dot, 共役あり) だけで期待値を
      * 求める。H は上三角だけ保持するので密行列よりメモリが少ない。
      *
-     * @param Statevector|QuantumCircuit|NDArray|array<int,object{real:float,imag:float}> $state
+     * @param Statevector|DensityMatrix|QuantumCircuit|NDArray|array<int,object{real:float,imag:float}> $state
      */
-    public function expectationValue(Statevector|QuantumCircuit|NDArray|array $state): float
-    {
+    public function expectationValue(
+        Statevector|DensityMatrix|QuantumCircuit|NDArray|array $state
+    ): float {
+        if ($state instanceof DensityMatrix) {
+            return $state->expectationValue($this);
+        }
         if ($state instanceof Statevector) {
             $ndarray = $state->ndarray();
         } elseif ($state instanceof QuantumCircuit) {
@@ -289,9 +293,10 @@ class SparsePauliOp
         return $real;
     }
 
-    /** @param Statevector|QuantumCircuit|NDArray|array<int,object{real:float,imag:float}> $state */
-    public function expectation_value(Statevector|QuantumCircuit|NDArray|array $state): float
-    {
+    /** @param Statevector|DensityMatrix|QuantumCircuit|NDArray|array<int,object{real:float,imag:float}> $state */
+    public function expectation_value(
+        Statevector|DensityMatrix|QuantumCircuit|NDArray|array $state
+    ): float {
         return $this->expectationValue($state);
     }
 }
